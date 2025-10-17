@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Team Links</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- You can include your CSS -->
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header>
+    <h1 id="team-title">Team Links</h1>
+    <div id="message" class="message"></div>
+  </header>
+
+  <main id="links-container">
+    <!-- Links will be dynamically inserted here -->
+  </main>
+
+  <footer>
+    <!-- Maybe a back link or some navigation -->
+    <a href="team.html?team=" id="back-to-team">Back to Team</a>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const team = params.get('team');
+      const page = 'teamLinks';
+
+      // Optionally: set the back link href
+      const backLink = document.getElementById('back-to-team');
+      backLink.href = `team.html?team=${encodeURIComponent(team)}`;
+
+      callBackend({ page: page, team: team })
+        .then(data => {
+          if (data.error) {
+            document.getElementById('message').innerText = data.error;
+            return;
+          }
+          renderLinksPage(data);
+        })
+        .catch(err => {
+          console.error('Error fetching links:', err);
+          document.getElementById('message').innerText = 'Error loading links.';
+        });
+    });
+
+    function renderLinksPage(data) {
+      const container = document.getElementById('links-container');
+
+      // Example: show team name
+      const title = document.getElementById('team-title');
+      if (data.teamObj && data.teamObj.name) {
+        title.innerText = `Links for ${data.teamObj.name}`;
+      }
+
+      // If there’s a message from the server (e.g. deletion confirmation)
+      if (data.message) {
+        document.getElementById('message').innerText = data.message;
+      }
+
+      // If links is an array in data
+      if (data.links && Array.isArray(data.links)) {
+        data.links.forEach(linkObj => {
+          const linkEl = document.createElement('div');
+          linkEl.className = 'link-item';
+
+          const a = document.createElement('a');
+          a.href = linkObj.url;
+          a.innerText = linkObj.label || linkObj.url;
+          a.target = '_blank';
+
+          linkEl.appendChild(a);
+          container.appendChild(linkEl);
+        });
+      } else {
+        container.innerText = 'No links available.';
+      }
+    }
+  </script>
+</body>
+</html>

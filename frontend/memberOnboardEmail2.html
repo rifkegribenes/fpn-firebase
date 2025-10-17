@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <body style="font-family:Arial,sans-serif;">
+    <p>Hi <?= memberName ?>,</p>
+
+    <p>Thanks for signing up for the Friends of Portland NET workspace. <a href="<?= teamPageURL ?>">You can access your neighborhood team page here</a>. The team page includes upcoming meeting dates, past meeting minutes, neighborhood team announcements, and other information.</p>
+
+    <? if (teamLeadName) { ?>
+      <p>The team lead for the <?= teamName ?> team is:</p>
+      <p>
+        <strong><?= teamLeadName ?></strong>
+        <? if (teamLeadEmail) { ?> – <?= teamLeadEmail ?><? } ?>
+      </p>
+      <p>Contact a team lead if you have any questions.</p>
+    <? } else { ?>
+      <!-- If no team lead name -->
+      <p>The <?= teamName ?> team currently has no team lead. If you're interested in volunteering to be a team lead, contact net@portlandoregon.gov. If you have any questions about using the NET team website, contact info@friendsofportlandnet.org</p>
+    <? } ?>
+
+    <p>– Friends of Portland NET</p>
+    <img src="cid:logo" alt="logo" width="120">
+  </body>
+</html>
