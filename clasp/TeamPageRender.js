@@ -1,8 +1,4 @@
-const TEAM_LEADS_GROUP_EMAIL = "team-leads@friendsofportlandnet.org"; 
-const ADMIN_GROUP_EMAIL = "adminteam@friendsofportlandnet.org"; 
-// console.log(`ss: ${ss}`);
 
-let isAdmin, isTeamLead, isTeamPageEditor, teamObj = {};
 
 function renderContent(userTeam, userEmail) { //userTeam is shortname
   console.log('renderContent');

@@ -5,7 +5,12 @@ function doGet(e) {
     const responseId = e.parameter.id;
     const page = e.parameter.page || 'team'; // default page
     const team = e.parameter.team || '';
-    const callback = e.parameter.callback; // 👈 JSONP callback function name
+    const email = e.parameter.email || '';
+    const callback = e.parameter.callback; // JSONP callback function name
+
+    isAdmin = checkGroupMembership(ADMIN_GROUP_EMAIL, userEmail);
+    isTeamLead = checkGroupMembership(TEAM_LEADS_GROUP_EMAIL, userEmail);
+    isTeamPageEditor = (isTeamLead && userEmail.includes(userTeam)) || isAdmin;
 
     let message = null;
     let responseData;
@@ -25,9 +30,12 @@ function doGet(e) {
       responseData = {
         success: true,
         message: "It works: team!",
-        page: page,
-        team: team,
-        teamObj: teamObj
+        page,
+        team,
+        teamObj,
+        isAdmin,
+        isTeamLead,
+        isTeamPageEditor
       };
     }
 
