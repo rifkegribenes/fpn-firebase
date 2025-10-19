@@ -1,0 +1,16 @@
+{
+  "scriptId": "135hJriCt118sZb81ffEH4qrrtEYZDrLXoGJdNT7Ir1PYK4ufPkAU3s_c",
+  "rootDir": "clasp",
+  "scriptExtensions": [
+    ".js",
+    ".gs"
+  ],
+  "htmlExtensions": [
+    ".html"
+  ],
+  "jsonExtensions": [
+    ".json"
+  ],
+  "filePushOrder": [],
+  "skipSubdirectories": false
+}

@@ -1,10 +1,12 @@
+let isAdmin, isTeamLead, isTeamPageEditor, teamObj = {};
+
 // run this function from the script editor to grant oAuth scopes for different GWS assets (sendMail, access drive, groups, etc.)
 function authorizeOnce() {
   DriveApp.getRootFolder();
 }
 
 function logSheetIds() {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const spreadsheet = SpreadsheetApp.openById('1A5wqQoAZhgk6QLFB4_8stVZUMP7iHdTrQikEa4ur4go');
   const sheets = spreadsheet.getSheets();
   
   sheets.forEach(sheet => {
@@ -19,11 +21,207 @@ function toSpinalCase(str) {
     .toLowerCase();                           // Convert to lowercase
 }
 
+function testGroupCheck() {
+  const user = "admin@friendsofportlandnet.org";
+  Logger.log(checkGroupMembership(user));
+}
+
+function checkGroupMembership(groupEmail, userEmail) {
+  try {
+    const member = AdminDirectory.Members.get(groupEmail, userEmail);
+    return member && member.status === "ACTIVE";
+  } catch (e) {
+    return false;
+  }
+}
+
+function getRecentAnnouncements() {
+  const data = updatesSheet.getDataRange().getValues();
+
+  // Get header indexes
+  const headers = data[0];
+  const TIMESTAMP_COL = headers.indexOf('Timestamp');
+  const UPDATE_TYPE_COL = headers.indexOf('What do you want to update?');
+  const TITLE_COL = headers.indexOf('Announcement Title');
+  const BODY_COL = headers.indexOf('Announcement Body');
+  const TEAM_COL = headers.indexOf('Your Team');
+  const EDIT_URL_COL = headers.indexOf('Edit URL');
+  const DELETE_URL_COL = headers.indexOf('Delete URL');
+
+  if (TIMESTAMP_COL === -1 || UPDATE_TYPE_COL === -1 || TITLE_COL === -1 || BODY_COL === -1 || TEAM_COL === -1, EDIT_URL_COL === -1, DELETE_URL_COL === -1) {
+    throw new Error("Required columns are missing from the update your team page sheet.");
+  }
+
+  // Filter rows where 'What do you want to update?' == 'Post announcement' and team matches function input
+  const announcementRows = data.slice(1).filter(row => {
+    return row[UPDATE_TYPE_COL] === 'Post announcement' && row[TEAM_COL] === teamObj.teamName;
+  });
+
+  // Sort by Timestamp descending
+  announcementRows.sort((a, b) => {
+    return new Date(b[TIMESTAMP_COL]) - new Date(a[TIMESTAMP_COL]);
+  });
+
+  // Get the top 3 announcements
+  const recentAnnouncements = announcementRows.slice(0, 3).map(row => {
+    return {
+      timestamp: new Date(row[TIMESTAMP_COL]),
+      title: row[TITLE_COL],
+      body: row[BODY_COL],
+      editURL: row[EDIT_URL_COL],
+      deleteURL: row[DELETE_URL_COL]
+    };
+  });
+  // console.log(recentAnnouncements);
+  return recentAnnouncements;
+}
+
+function renameFile(team, file, fileType, meetingDate) {
+  console.log('####################   renameFile');
+  
+  // Only touch recently added files (e.g. last 60 seconds)
+  const created = file.getDateCreated();
+  const now = new Date();
+  const ageInSeconds = (now - created) / 1000;
+  // console.log(`ageInSeconds: ${ageInSeconds}`);
+
+  const mtgDate = meetingDate ? formatDateFileName(new Date(meetingDate)) : null;
+  console.log(`mtgDate: ${mtgDate}`);
+
+  if (ageInSeconds < 60) {
+    // console.log(`ageInSeconds < 60`);
+    console.log('renameFile');
+    const originalName = file.getName();
+    let newName = '';
+    if (mtgDate) {
+      newName = `${team}_${fileType}_${mtgDate}_${originalName}`;
+    } else {
+      newName = `${team}_${fileType}_${originalName}`;
+    }
+    // console.log(`originalName: ${originalName}`);
+    // console.log(`newName: ${newName}`);
+    file.setName(newName);
+    file.setDescription(team);
+    // console.log(`file description: *********************`);
+    // console.log(file.getDescription());
+    // console.log(`mtgDate: ${mtgDate}`);
+    if (mtgDate) {
+      let currentDesc = file.getDescription() || "";
+      currentDesc = currentDesc += `,${mtgDate}`;
+      file.setDescription(currentDesc);
+      console.log(`file description with mtgDate:`);
+      console.log(file.getDescription());
+    }
+  } else {
+    console.log(`skipping older file ${ageInSeconds}`);
+  }
+}
+
+
+// prepends the team name to meeting minutes and ops plan files so they can be found later in the drive folder
+function onFormSubmitHandler2(e) {
+  console.log(`onFormSubmitHandler2`);
+  const sheetName = e.range.getSheet().getName();
+  console.log(`sheetName = ${sheetName}`);
+
+  // e.source is the Form object that triggered the event
+  const submittedFormId = e.source.getId();
+  console.log(`onFormSubmitHandler2 submittedFormId: ${submittedFormId}`);
+  console.log(`UPDATES_FORM_ID: ${UPDATES_FORM_ID}`);
+
+  if (submittedFormId !== UPDATES_FORM_ID) {
+    console.log('Submission ignored: Not from team updates form.');
+    return;
+  }
+
+  // File upload logic
+  const responses = e.namedValues;
+  const team = responses["Your Team"][0] || 'Unknown'; 
+  const fileType = responses["What do you want to update?"][0].includes('minutes') ? 'minutes' : responses["What do you want to update?"][0].includes('operations') ? 'ops' : '';
+  const meetingDate = responses["Date of meeting"][0] || '';
+  console.log(`team: ${team}, fileType: ${fileType}`);
+
+  const minutesFolder = DriveApp.getFolderById(MINUTES_FOLDER_ID);
+  const opsFolder = DriveApp.getFolderById(OPS_FOLDER_ID);
+  const minutesFiles = minutesFolder.getFiles();
+  const opsFiles = opsFolder.getFiles();
+
+  if (fileType === 'minutes') {
+    while (minutesFiles.hasNext()) {
+    const file = minutesFiles.next();
+    // console.log('minutesFile');
+    // console.log(file.getName());
+
+    renameFile(globalLookup(team).shortName, file, fileType, meetingDate)
+  }
+
+  } else if (fileType === 'ops') {
+    while (opsFiles.hasNext()) {
+    const file = opsFiles.next();
+    // console.log('opsFile');
+    // console.log(file.getName());
+
+    renameFile(globalLookup(team).shortName, file, fileType)
+    
+    }
+  } else {
+    console.log('no fileType found'
+    )
+  }
+}
+
+function getLatestMinutesFiles(folderId, maxFiles) {
+  console.log(`getLatestMinutesFiles`);
+  const teamPrefix = `${teamObj.shortName}_minutes`;
+  console.log(`teamPrefix: ${teamPrefix}`);
+  const response = Drive.Files.list({
+    q: `'${folderId}' in parents and (mimeType='application/pdf' or mimeType='application/vnd.openxmlformats-officedocument.wordprocessingml.document' or mimeType='application/msword') and trashed=false and name contains '${teamPrefix}'`,
+    orderBy: 'createdTime desc',
+    maxResults: maxFiles,
+    fields: 'files(id,name,createdTime,description)'
+  });
+  console.log('##########################');
+  console.log(response);
+  return response.files || response.items || [];
+}
+
+function getLatestOpsFile(folderId) {
+  // console.log(`getLatestOpsFile`);
+  const teamPrefix = `${teamObj.shortName}_ops`;
+  // console.log(`teamPrefix: ${teamPrefix}`);
+  const response = Drive.Files.list({
+    q: `'${folderId}' in parents and (mimeType='application/pdf' or mimeType='application/vnd.openxmlformats-officedocument.wordprocessingml.document' or mimeType='application/msword') and trashed=false and name contains '${teamPrefix}'`,
+    orderBy: 'createdTime desc',
+    maxResults: 10, // get a few in case of false positives
+    fields: 'files(id,name,createdTime,description)'
+  });
+
+  // Filter to the most recently created ops file
+  const matchingFile = response.files.find(file => file.name.startsWith(teamPrefix));
+  // console.log(matchingFile);
+  return matchingFile || null; // Return the matching file or null if none found
+}
+
+function getTeamLinks() {
+  const sheet = teamSheet;
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const teamIndex = headers.indexOf('Team');
+  const urlIndex = headers.indexOf('Team page');
+
+  const links = data.slice(1).map(row => ({
+    name: row[teamIndex],
+    url: row[urlIndex]
+  }));
+
+  return links;
+}
+
 const SheetCache = (() => {
   let idToSheetMap = null;
 
   function buildCache() {
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const spreadsheet = SpreadsheetApp.openById('1A5wqQoAZhgk6QLFB4_8stVZUMP7iHdTrQikEa4ur4go');
     const sheets = spreadsheet.getSheets();
     idToSheetMap = {};
     sheets.forEach(sheet => {

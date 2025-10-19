@@ -1,5 +1,5 @@
 // Example function to render the team page
-function renderTeamPage(data) {
+export function renderTeamPage(data) {
   const container = document.getElementById('team-container');
   if (!container) {
     console.error('Missing #team-container');
