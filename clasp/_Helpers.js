@@ -26,14 +26,111 @@ function testGroupCheck() {
   Logger.log(checkGroupMembership(user));
 }
 
+// --- Configurable fallback lists ---
+const ADMIN_EMAILS = [
+  "admin@friendsofportlandnet.org", 
+  "bec@friendsofportlandnet.org", 
+  "carolyn@friendsofportlandnet.org", 
+  "sarah1@friendsofportlandnet.org"
+]; 
+const TEAM_LEADS_EMAILS = [
+  "tl.arbor@friendsofportlandnet.org",
+  "tl.argay@friendsofportlandnet.org",
+  "tl.arlington@friendsofportlandnet.org",
+  "tl.arnold@friendsofportlandnet.org",
+  "tl.askcreek@friendsofportlandnet.org",
+  "tl.bwa@friendsofportlandnet.org",
+  "tl.beh@friendsofportlandnet.org",
+  "tl.brentwood@friendsofportlandnet.org",
+  "tl.bridlemile@friendsofportlandnet.org",
+  "tl.buckman@friendsofportlandnet.org",
+  "tl.cathedral@friendsofportlandnet.org",
+  "tl.centennial@friendsofportlandnet.org",
+  "tl.collins@friendsofportlandnet.org",
+  "tl.concordia@friendsofportlandnet.org",
+  "tl.creston@friendsofportlandnet.org",
+  "tl.cully@friendsofportlandnet.org",
+  "tl.eastcolumbia@friendsofportlandnet.org",
+  "tl.foster@friendsofportlandnet.org",
+  "tl.goose@friendsofportlandnet.org",
+  "tl.grant@friendsofportlandnet.org",
+  "tl.hayden@friendsofportlandnet.org",
+  "tl.hayhurst@friendsofportlandnet.org",
+  "tl.hazellwood@friendsofportlandnet.org",
+  "tl.hillsdale@friendsofportlandnet.org",
+  "tl.hillside@friendsofportlandnet.org",
+  "tl.hollywood@friendsofportlandnet.org",
+  "tl.homestead@friendsofportlandnet.org",
+  "tl.hosford@friendsofportlandnet.org",
+  "tl.irvington@friendsofportlandnet.org",
+  "tl.kerns@friendsofportlandnet.org",
+  "tl.king@friendsofportlandnet.org",
+  "tl.kingsgate@friendsofportlandnet.org",
+  "tl.laurelhurst@friendsofportlandnet.org",
+  "tl.lents@friendsofportlandnet.org",
+  "tl.linnton@friendsofportlandnet.org",
+  "tl.lloyd@friendsofportlandnet.org",
+  "tl.madison@friendsofportlandnet.org",
+  "tl.maplewood@friendsofportlandnet.org",
+  "tl.markham@friendsofportlandnet.org",
+  "tl.marshall@friendsofportlandnet.org",
+  "tl.mtscott@friendsofportlandnet.org",
+  "tl.multnomah@friendsofportlandnet.org",
+  "tl.northportland@friendsofportlandnet.org",
+  "tl.northwest@friendsofportlandnet.org",
+  "tl.northwestindustrial@friendsofportlandnet.org",
+  "tl.oldtown@friendsofportlandnet.org",
+  "tl.overlook@friendsofportlandnet.org",
+  "tl.parkrose@friendsofportlandnet.org",
+  "tl.pearl@friendsofportlandnet.org",
+  "tl.piedmont@friendsofportlandnet.org",
+  "tl.pleasant@friendsofportlandnet.org",
+  "tl.downtown@friendsofportlandnet.org",
+  "tl.portsmouth@friendsofportlandnet.org",
+  "tl.reed@friendsofportlandnet.org",
+  "tl.richmond@friendsofportlandnet.org",
+  "tl.rosecity@friendsofportlandnet.org",
+  "tl.roseway@friendsofportlandnet.org",
+  "tl.russell@friendsofportlandnet.org",
+  "tl.sabin@friendsofportlandnet.org",
+  "tl.sellwood@friendsofportlandnet.org",
+  "tl.southburlingame@friendsofportlandnet.org",
+  "tl.southportland@friendsofportlandnet.org",
+  "tl.southwaterfront@friendsofportlandnet.org",
+  "tl.southwesthills@friendsofportlandnet.org",
+  "tl.stjohns@friendsofportlandnet.org",
+  "tl.sullivans@friendsofportlandnet.org",
+  "tl.sumner@friendsofportlandnet.org",
+  "tl.sunderland@friendsofportlandnet.org",
+  "tl.sunnyside@friendsofportlandnet.org",
+  "tl.sylvan@friendsofportlandnet.org",
+  "tl.taborvilla@friendsofportlandnet.org",
+  "tl.westsideheights@friendsofportlandnet.org",
+  "tl.wilkes@friendsofportlandnet.org",
+  "tl.woodstock@friendsofportlandnet.org"
+];
+
 function checkGroupMembership(groupEmail, userEmail) {
+  if (!userEmail) return false;
+
+  // Fallback: direct match first (avoids Directory API call)
+  if (groupEmail === ADMIN_GROUP_EMAIL && ADMIN_EMAILS.includes(userEmail)) {
+    return true;
+  }
+  if (groupEmail === TEAM_LEADS_GROUP_EMAIL && TEAM_LEADS_EMAILS.includes(userEmail)) {
+    return true;
+  }
+
+  // Try Directory API (if authorized)
   try {
     const member = AdminDirectory.Members.get(groupEmail, userEmail);
     return member && member.status === "ACTIVE";
-  } catch (e) {
+  } catch (err) {
+    console.warn(`checkGroupMembership Directory API failed for ${userEmail}: ${err.message}`);
     return false;
   }
 }
+
 
 function getRecentAnnouncements(teamObj) {
   const data = updatesSheet.getDataRange().getValues();

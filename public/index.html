@@ -7,9 +7,18 @@
 </head>
 <body>
   <div id="app">
-    <div id="loadingSpinner" class="spinner"></div>
+    <div id="logoContainer">
+      <a href="https://sites.google.com/friendsofportlandnet.org/teamspace/home">
+        <img id="logo" alt="Friends of Portland NET" src="/img/logo.png">
+      </a>
+    </div>
+    <div id="loadingSpinner">
+      <div class="spinner"></div>
+      <p>Loading team data...</p>
+    </div>
     <div id="teamInfo"></div>
     <h1 id="pageTitle">Team Page</h1>
+    <button id="refreshBtn" style="display:none;">&#10227; Refresh Data</button>
     <div id="image"></div>
     <div class="publicContent">
       <div class="quickLinks" id="quickLinks">
@@ -102,29 +111,69 @@
     <div id="userInfo"></div>
   </div>
 
-  <script type="module" src="js/config.js"></script>
-  <script type="module">
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import { callBackend } from './js/api.js';
   import { renderTeamPage } from './js/teamRender.js';
+  import { config } from './js/config.js';
 
-  document.addEventListener('DOMContentLoaded', function () {
+  // Initialize Firebase app (from your config.js export)
+  const app = initializeApp(config.firebase);
+  const auth = getAuth(app);
+
+  document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
-    const team = params.get('team');
     const page = 'team';
+    const team = params.get('team') || '';
 
-    callBackend({ page: page, team: team })
-      .then(data => {
-        if (data.error) {
-          console.error('Backend error:', data.error);
-          return;
+    // Wait for Firebase Auth to initialize, then call backend with email (if any)
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      unsubscribe(); // we only need the first state for initial load
+
+      const email = user?.email || ''; // '' if not logged in
+      console.log('onAuthStateChanged user email:', email);
+
+      // Call backend with email param (if signed in)
+      callBackend({ page, team, email })
+        .then(data => {
+          console.log('Backend response debug:', data?.debug || data);
+          if (data?.error) {
+            console.error('Backend error:', data.error);
+            return;
+          }
+          renderTeamPage(data);
+        })
+        .catch(err => {
+          console.error('Fetch error:', err);
+        });
+    });
+
+    // Safety: if onAuthStateChanged doesn't fire in 2s, still call backend anonymously
+    setTimeout(async () => {
+      // If onAuthStateChanged already fired and unsubscribed, do nothing
+      // (unsubscribe will have been called)
+      try {
+        // If there is no active user yet, call backend anonymously
+        const user = auth.currentUser;
+        if (!user) {
+          console.warn('Auth not ready within timeout — calling backend anonymously');
+          const data = await callBackend({ page, team, email: '' });
+          if (data?.error) {
+            console.error('Backend error:', data.error);
+            return;
+          }
+          renderTeamPage(data);
         }
-        renderTeamPage(data);
-      })
-      .catch(err => {
-        console.error('Fetch error:', err);
-      });
+      } catch (e) {
+        console.error('Fallback anonymous fetch failed', e);
+      }
+    }, 2000);
   });
 </script>
+
+
+
 
 </body>
 </html>

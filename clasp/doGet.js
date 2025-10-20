@@ -1,40 +1,59 @@
 function doGet(e) {
-  console.log('doGet');
+  console.log('--- doGet called ---');
+  console.log('Raw e object:', JSON.stringify(e)); // full visibility into incoming params
+
   try {
-    const action = e.parameter.action;
-    const responseId = e.parameter.id;
-    const page = e.parameter.page || 'team'; // default page
-    const team = e.parameter.team || '';
-    const email = e.parameter.email || '';
-    const callback = e.parameter.callback; // JSONP callback function name
+    // extract parameters
+    const params = e && e.parameter ? e.parameter : {};
+    const action = params.action || '';
+    const responseId = params.id || '';
+    const page = params.page || 'team';
+    const team = params.team || '';
+    const emailParam = params.email || ''; // renamed for clarity
+    const callback = params.callback;
 
-    isAdmin = checkGroupMembership(ADMIN_GROUP_EMAIL, email);
-    isTeamLead = checkGroupMembership(TEAM_LEADS_GROUP_EMAIL, email);
-    isTeamPageEditor = (isTeamLead && email.includes(userTeam)) || isAdmin;
+    console.log('emailParam:', emailParam);
+    console.log('all params:', JSON.stringify(params));
 
+    // more explicit session + auth info
+    const activeUser = Session.getActiveUser();
+    const activeUserEmail = activeUser ? activeUser.getEmail() : null;
+    const authMode = e ? e.authMode : 'none';
+    const effectiveEmail = emailParam || activeUserEmail || 'anonymous@public';
 
+    console.log({
+      authMode,
+      activeUserEmail,
+      emailParam,
+      effectiveEmail
+    });
+
+    // check roles using effectiveEmail (the merged source)
+    const isAdmin = checkGroupMembership(ADMIN_GROUP_EMAIL, effectiveEmail);
+    const isTeamLead = checkGroupMembership(TEAM_LEADS_GROUP_EMAIL, effectiveEmail);
+    const isTeamPageEditor = (isTeamLead && effectiveEmail.includes(team)) || isAdmin;
+
+    console.log('Email:', effectiveEmail, 'isAdmin:', isAdmin, 'isTeamLead:', isTeamLead, 'isTeamPageEditor:', isTeamPageEditor);
+
+    // load data
+    const teamObj = globalLookup(team);
+    const announcements = getRecentAnnouncements(teamObj);
+    const minutes = getLatestMinutesFiles(teamObj, MINUTES_FOLDER_ID, 10);
 
     let message = null;
     let responseData;
 
-    const teamObj = globalLookup(team);
-    console.log(`*****TEAM OBJECT doGET*******`);
-    console.log(teamObj);
-
-    const announcements = getRecentAnnouncements(teamObj);
-    const minutes = getLatestMinutesFiles(teamObj, MINUTES_FOLDER_ID, 10);
-
     if (action === 'delete' && responseId) {
-      console.log('trying to delete');
+      console.log('Attempting delete for responseId:', responseId);
       const deleted = deleteFormResponse(responseId);
       message = deleted ? 'Announcement deleted successfully.' : 'Failed to delete announcement.';
-      responseData = { success: deleted, message: message };
+      responseData = { success: deleted, message };
     } else if (page === 'teamLinks') {
-      responseData = { success: true, message: "It works: teamLinks!", page: "teamLinks" };
+      responseData = { success: true, message: 'success: teamLinks', page: 'teamLinks' };
     } else {
       responseData = {
         success: true,
-        message: "It works: team!",
+        message: 'success: team',
         page,
         team,
         teamObj,
@@ -43,54 +62,61 @@ function doGet(e) {
         isTeamPageEditor,
         announcements,
         minutes,
+        debug: {
+          authMode,
+          activeUserEmail,
+          emailParam,
+          effectiveEmail,
+          activeUser: activeUserEmail || null,
+          teamObjKeys: teamObj ? Object.keys(teamObj) : [],
+          announcementsCount: announcements?.length || 0,
+          minutesCount: minutes?.length || 0,
+          timestamp: new Date().toISOString()
+        }
       };
     }
 
+    // return JSON or JSONP
     const json = JSON.stringify(responseData);
-
-    // If callback exists → wrap in JSONP response
     if (callback) {
-      const jsonp = `${callback}(${json})`;
       return ContentService
-        .createTextOutput(jsonp)
+        .createTextOutput(`${callback}(${json})`)
         .setMimeType(ContentService.MimeType.JAVASCRIPT);
     }
-
-    // Otherwise, return plain JSON (still works for direct API access)
     return ContentService
       .createTextOutput(json)
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
-  const stack = err.stack || '';
-  let file = 'unknown';
-  let line = null;
+    console.error('doGet ERROR:', err);
+    const stack = err.stack || '';
+    let file = 'unknown';
+    let line = null;
 
-  // Match formats like (doGet:11:55) or (Helpers:27)
-  const match = stack.match(/\(([^:]+):(\d+)(?::\d+)?\)/);
-  if (match) {
-    file = match[1];
-    line = match[2];
+    const match = stack.match(/\(([^:]+):(\d+)(?::\d+)?\)/);
+    if (match) {
+      file = match[1];
+      line = match[2];
+    }
+
+    const errorResponse = {
+      success: false,
+      error: err.message,
+      file,
+      line,
+      stack,
+      debug: {
+        timestamp: new Date().toISOString(),
+        params: e?.parameter || {},
+      }
+    };
+
+    const callback = e?.parameter?.callback;
+    const json = JSON.stringify(errorResponse);
+    const output = callback ? `${callback}(${json})` : json;
+
+    return ContentService
+      .createTextOutput(output)
+      .setMimeType(callback ? ContentService.MimeType.JAVASCRIPT : ContentService.MimeType.JSON);
   }
-
-  const errorResponse = {
-    success: false,
-    error: err.message,
-    file,
-    line,
-    stack
-  };
-
-  const callback = e.parameter.callback;
-  const json = JSON.stringify(errorResponse);
-
-  if (callback) {
-    return ContentService.createTextOutput(`${callback}(${json})`)
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
-  } else {
-    return ContentService.createTextOutput(json)
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
 }

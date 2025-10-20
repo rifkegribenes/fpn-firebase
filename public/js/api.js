@@ -1,7 +1,8 @@
+// /public/js/api.js
 import { config } from './config.js';
 
 /**
- * Call Apps Script backend with parameters (JSONP version).
+ * Pure JSONP caller. Caller must supply params.email if available.
  */
 export function callBackend(params = {}) {
   return new Promise((resolve, reject) => {
@@ -10,32 +11,32 @@ export function callBackend(params = {}) {
     // Build the full URL with query params
     const url = new URL(config.backendUrl);
     Object.keys(params).forEach(key => {
-      url.searchParams.append(key, params[key]);
+      if (params[key] !== undefined && params[key] !== null) {
+        url.searchParams.append(key, params[key]);
+      }
     });
-    // Add JSONP callback param (Apps Script expects this)
     url.searchParams.append('callback', callbackName);
 
-    // Define the global callback the server will call
+    // Global callback for JSONP
     window[callbackName] = (data) => {
       resolve(data);
       cleanup();
     };
 
-    // Handle network errors or timeouts
     const timeout = setTimeout(() => {
       reject(new Error('JSONP request timed out'));
       cleanup();
-    }, 10000); // 10s timeout
+    }, 10000);
 
     function cleanup() {
-      delete window[callbackName];
+      try { delete window[callbackName]; } catch(e){}
       clearTimeout(timeout);
-      if (script.parentNode) script.parentNode.removeChild(script);
+      if (script && script.parentNode) script.parentNode.removeChild(script);
     }
 
-    // Create and inject the <script> tag
     const script = document.createElement('script');
     script.src = url.toString();
+    script.async = true;
     script.onerror = () => {
       reject(new Error('JSONP request failed'));
       cleanup();
@@ -44,4 +45,3 @@ export function callBackend(params = {}) {
     document.body.appendChild(script);
   });
 }
-
