@@ -7,20 +7,99 @@
 </head>
 <body>
   <div id="app">
+    <div id="loadingSpinner" class="spinner"></div>
+    <div id="teamInfo"></div>
     <h1 id="pageTitle">Team Page</h1>
     <div id="image"></div>
-    <div id="content"></div>
-    <div id="announcements"></div>
-    <div id="events"></div>
-    <div id="sidebar">
-      <div id="minutes"></div>
-      <div id="ops"></div>
-      <div id="group"></div>
-      <div id="drive"></div>
-      <button id="loginBtn">Admin login</button>
-      <button id="logoutBtn" hidden>Sign out</button>
-      <div id="userInfo"></div>
+    <div class="publicContent">
+      <div class="quickLinks" id="quickLinks">
+        <p class="qlHed">Quick Links</p>
+        <p class="qlP"><a href="https://volunteerpdx.net" target="_blank">Portland NET Wiki</a>
+        <p class="qlP"><a href="https://app.betterimpact.com/" target="_blank">Log hours on MIP</a>
+      </div>
+
+      <div class="pcContainer container" style="
+        display: flex !important;
+        flex-direction: column !important;  
+        flex-wrap: nowrap !important;
+        width: 100%;
+      ">
+        <div id="editor"></div>
+        <div class="announcements block" style="
+          max-width: 100% !important;
+          margin-bottom: 24px;
+        ">
+          <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Announcements</h3>
+          <div id="announcements" class="announcements cont" style="
+            padding-right: 0 !important;
+            margin-right: 0 !important;
+            border-right: none !important;
+          ">
+          </div>
+        </div>
+
+        <div class="calendar block" style="
+          max-width: 100% !important;
+          margin-bottom: 24px;
+        ">
+          <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Upcoming Events</h3>
+          <div id="events" class="calendar cont" style="
+            max-width: 100% !important;
+            padding-right: 0 !important;
+            margin-right: 0 !important;
+            border-right: none !important;
+          ">
+          </div>
+        </div>
+
+        <div class="pcColumnContainer container" style="
+          display: flex !important;
+          flex-direction: column !important;
+          flex-wrap: nowrap !important;
+          max-width: 100% !important;
+        ">
+          <div class="minutes block" style="
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+            border-bottom: 1px dotted #ccc;
+          ">
+            <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Meeting Minutes</h3>
+            <div id="minutes" class="minutes cont">
+            </div>
+          </div>
+
+          <div class="ops block" style="
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+            border-bottom: 1px dotted #ccc;
+          ">
+            <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Operations Plan</h3>
+            <div id="ops" class="ops cont">
+            </div>
+          </div>
+
+          <div class="grouplink block" style="
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+            border-bottom: 1px dotted #ccc;
+          ">
+            <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Google Group</h3>
+            <div id="group" class="gGroup cont">
+            </div>
+          </div>
+
+          <div class="drivelink block">
+            <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Team Drive</h3>
+            <div id="drive" class="gDrive cont">
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+    <div id="content"></div>
+    <button id="loginBtn">Admin login</button>
+    <button id="logoutBtn" hidden>Sign out</button>
+    <div id="userInfo"></div>
   </div>
 
   <script type="module" src="js/config.js"></script>

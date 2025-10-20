@@ -55,18 +55,35 @@ async function init() {
   const page = urlParams.get('page') || 'team';
   const team = urlParams.get('team') || '';
 
+  const teamInfo = document.getElementById('teamInfo');
+  const spinner = document.getElementById('loadingSpinner');
+
   try {
-    const data = await callBackend({
-      page,
-      team,
-      email: currentUser ? currentUser.email : ''
-    });
-    renderTeamPage(data);
+    // Show loading spinner
+    if (spinner) spinner.style.display = 'block';
+    if (teamInfo) teamInfo.innerHTML = '';
+
+    // Fetch data from backend
+    const data = await callBackend({ page, team });
+
+    // Hide spinner
+    if (spinner) spinner.style.display = 'none';
+
+    // Only render if data exists and looks valid
+    if (data && typeof data === 'object' && data.success !== false) {
+      renderTeamPage(data);
+    } else {
+      if (teamInfo) teamInfo.innerText = 'No data available.';
+    }
+
   } catch (err) {
     console.error('Error loading team page data:', err);
-    document.getElementById('teamInfo').innerText = 'Error loading data.';
+
+    if (spinner) spinner.style.display = 'none';
+    if (teamInfo) teamInfo.innerText = 'Error loading data.';
   }
 }
+
 
 // --- Render function ---
 export function renderTeamPage(data) {
@@ -79,16 +96,19 @@ export function renderTeamPage(data) {
   const adminDiv = document.getElementById('adminSection');
   const contentDiv = document.getElementById('content');
   const announcementsDiv = document.getElementById('announcements');
+  console.log('announcementsDiv');
+  console.log(announcementsDiv);
   const eventsDiv = document.getElementById('events');
   const minutesDiv = document.getElementById('minutes');
   const opsDiv = document.getElementById('ops');
   const groupDiv = document.getElementById('group');
   const driveDiv = document.getElementById('drive');
   const imageDiv = document.getElementById('image');
+  const editorDiv = document.getElementById('editor');
 
 
 
-  contentDiv.innerHMTL = renderContent(data);
+  renderContent(data);
 
 
   // const linksDiv = document.getElementById('linksSection');
@@ -152,116 +172,20 @@ function renderContent(data) {
     isTeamPageEditor = (isTeamLead && userEmail.includes(userTeam)) || isAdmin;
     console.log(`isAdmin: ${isAdmin}, isTeamLead: ${isTeamLead}, isTeamPageEditor: ${isTeamPageEditor}`);
   }
-  
 
-  let content = `
-    <div style="padding: 20px; font-family: Lato, sans-serif;">
-      ${isTeamPageEditor ? showTeamPageEditorContent(userTeam) : ''}
-      ${showPublicContent(isTeamPageEditor)}
-    </div>
-  `;
+  console.log(data);
+  if (isTeamPageEditor) {
+    editorDiv.innerHTML = showTeamPageEditorContent(data);
+  } 
+  announcementsDiv.innerHTML = announcementsBlock(isTeamPageEditor, data);
+  eventsDiv.innerHTML = renderCalendar(data)
+  minutesDiv.innerHTML = renderMinutesBlock(data)
+  opsDiv.innerHTML = renderOpsPlanBlock(data)
+  groupDiv.innerHTML = renderGoogleGroup(data)
+  driveDiv.innerHTML = renderGoogleDrive(data)
 
-  // console.log('content');
-  // console.log(content);
 
   return content;
-}
-
-function showPublicContent(isTeamPageEditor, data) {
-  console.log('showPublicContent');
-  return `
-    <div class="publicContent">
-      <h2 style="font-size: 2rem; margin-bottom: 16px;">${data.teamObj.teamName}</h2>
-      <div class="quickLinks" id="quickLinks>
-        <p class="qlHed">Quick Links</p>
-        <p class="qlP"><a href="https://volunteerpdx.net" target="_blank">Portland NET Wiki</a>
-        <p class="qlP"><a href="https://app.betterimpact.com/" target="_blank">Log hours on MIP</a>
-      </div>
-
-      <div class="pcContainer container" style="
-        display: flex !important;
-        flex-direction: column !important;  /* force single column */
-        flex-wrap: nowrap !important;
-        width: 100%;
-      ">
-        <div class="announcements block" style="
-          max-width: 100% !important;
-          margin-bottom: 24px;
-        ">
-          <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Announcements</h3>
-          <div class="announcements cont" style="
-            padding-right: 0 !important;
-            margin-right: 0 !important;
-            border-right: none !important;
-          ">
-            ${announcementsBlock(isTeamPageEditor)}
-          </div>
-        </div>
-
-        <div class="calendar block" style="
-          max-width: 100% !important;
-          margin-bottom: 24px;
-        ">
-          <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Upcoming Events</h3>
-          <div class="calendar cont" style="
-            max-width: 100% !important;
-            padding-right: 0 !important;
-            margin-right: 0 !important;
-            border-right: none !important;
-          ">
-            ${renderCalendar(data)}
-          </div>
-        </div>
-
-        <div class="pcColumnContainer container" style="
-          display: flex !important;
-          flex-direction: column !important;
-          flex-wrap: nowrap !important;
-          max-width: 100% !important;
-        ">
-          <div class="minutes block" style="
-            padding-bottom: 20px;
-            margin-bottom: 20px;
-            border-bottom: 1px dotted #ccc;
-          ">
-            <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Meeting Minutes</h3>
-            <div class="minutes cont">
-              ${renderMinutesBlock(data)}
-            </div>
-          </div>
-
-          <div class="ops block" style="
-            padding-bottom: 20px;
-            margin-bottom: 20px;
-            border-bottom: 1px dotted #ccc;
-          ">
-            <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Operations Plan</h3>
-            <div class="ops cont">
-              ${renderOpsPlanBlock(data)}
-            </div>
-          </div>
-
-          <div class="grouplink block" style="
-            padding-bottom: 20px;
-            margin-bottom: 20px;
-            border-bottom: 1px dotted #ccc;
-          ">
-            <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Google Group</h3>
-            <div class="gGroup cont">
-              ${renderGoogleGroup(data)}
-            </div>
-          </div>
-
-          <div class="drivelink block">
-            <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Team Drive</h3>
-            <div class="gDrive cont">
-              ${renderGoogleDrive(data)}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>`
-
 }
 
 function showTeamPageEditorContent(data) {
@@ -294,8 +218,11 @@ function showTeamPageEditorContent(data) {
 
 
 function announcementsBlock(isTeamPageEditor, data) {
-  if (getRecentAnnouncements() && getRecentAnnouncements().length) {
-    return getRecentAnnouncements().map(item => renderAnnouncement(item, isTeamPageEditor)).join('');
+  console.log('announcementsBlock');
+  console.log(data);
+  console.log(data.announcements);
+  if (data.announcements && data.announcements.length) {
+    return data.announcements().map(item => renderAnnouncement(item, isTeamPageEditor)).join('');
   } else {
     return `<p>No announcements for ${data.teamObj.teamName}</p>`
   }
@@ -333,7 +260,7 @@ function renderMinutesBlock(data) {
   console.log('renderMinutesBlock');
   try {
     const folderId = MINUTES_FOLDER_ID; 
-    const files = getLatestMinutesFiles(folderId, 10);
+    const files = data.minutes;
 
     console.log('files: (minutes, 393)');
     console.log(files);
@@ -378,7 +305,7 @@ function renderMinutesBlock(data) {
 function renderOpsPlanBlock(data) {
   try {
     const folderId = OPS_FOLDER_ID; 
-    const file = getLatestOpsFile(folderId); 
+    const file = getLatestOpsFile(data.teamObj, folderId); 
     console.log('renderOpsPlan');
     console.log(file);
     if (!!file) {

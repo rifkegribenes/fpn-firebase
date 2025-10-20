@@ -8,9 +8,11 @@ function doGet(e) {
     const email = e.parameter.email || '';
     const callback = e.parameter.callback; // JSONP callback function name
 
-    isAdmin = checkGroupMembership(ADMIN_GROUP_EMAIL, userEmail);
-    isTeamLead = checkGroupMembership(TEAM_LEADS_GROUP_EMAIL, userEmail);
-    isTeamPageEditor = (isTeamLead && userEmail.includes(userTeam)) || isAdmin;
+    isAdmin = checkGroupMembership(ADMIN_GROUP_EMAIL, email);
+    isTeamLead = checkGroupMembership(TEAM_LEADS_GROUP_EMAIL, email);
+    isTeamPageEditor = (isTeamLead && email.includes(userTeam)) || isAdmin;
+
+
 
     let message = null;
     let responseData;
@@ -18,6 +20,9 @@ function doGet(e) {
     const teamObj = globalLookup(team);
     console.log(`*****TEAM OBJECT doGET*******`);
     console.log(teamObj);
+
+    const announcements = getRecentAnnouncements(teamObj);
+    const minutes = getLatestMinutesFiles(teamObj, MINUTES_FOLDER_ID, 10);
 
     if (action === 'delete' && responseId) {
       console.log('trying to delete');
@@ -35,7 +40,9 @@ function doGet(e) {
         teamObj,
         isAdmin,
         isTeamLead,
-        isTeamPageEditor
+        isTeamPageEditor,
+        announcements,
+        minutes,
       };
     }
 
@@ -55,22 +62,35 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
-    console.error("Error in doGet:", err);
-    const errorData = {
-      success: false,
-      error: err.message
-    };
+  const stack = err.stack || '';
+  let file = 'unknown';
+  let line = null;
 
-    const json = JSON.stringify(errorData);
-
-    if (e.parameter.callback) {
-      return ContentService
-        .createTextOutput(`${e.parameter.callback}(${json})`)
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    } else {
-      return ContentService
-        .createTextOutput(json)
-        .setMimeType(ContentService.MimeType.JSON);
-    }
+  // Match formats like (doGet:11:55) or (Helpers:27)
+  const match = stack.match(/\(([^:]+):(\d+)(?::\d+)?\)/);
+  if (match) {
+    file = match[1];
+    line = match[2];
   }
+
+  const errorResponse = {
+    success: false,
+    error: err.message,
+    file,
+    line,
+    stack
+  };
+
+  const callback = e.parameter.callback;
+  const json = JSON.stringify(errorResponse);
+
+  if (callback) {
+    return ContentService.createTextOutput(`${callback}(${json})`)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  } else {
+    return ContentService.createTextOutput(json)
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 }

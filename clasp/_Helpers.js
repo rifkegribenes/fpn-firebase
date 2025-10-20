@@ -35,7 +35,7 @@ function checkGroupMembership(groupEmail, userEmail) {
   }
 }
 
-function getRecentAnnouncements() {
+function getRecentAnnouncements(teamObj) {
   const data = updatesSheet.getDataRange().getValues();
 
   // Get header indexes
@@ -170,7 +170,7 @@ function onFormSubmitHandler2(e) {
   }
 }
 
-function getLatestMinutesFiles(folderId, maxFiles) {
+function getLatestMinutesFiles(teamObj, folderId, maxFiles) {
   console.log(`getLatestMinutesFiles`);
   const teamPrefix = `${teamObj.shortName}_minutes`;
   console.log(`teamPrefix: ${teamPrefix}`);
@@ -185,7 +185,7 @@ function getLatestMinutesFiles(folderId, maxFiles) {
   return response.files || response.items || [];
 }
 
-function getLatestOpsFile(folderId) {
+function getLatestOpsFile(teamObj, folderId) {
   // console.log(`getLatestOpsFile`);
   const teamPrefix = `${teamObj.shortName}_ops`;
   // console.log(`teamPrefix: ${teamPrefix}`);
