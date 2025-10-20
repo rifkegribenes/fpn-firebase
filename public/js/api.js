@@ -2,46 +2,43 @@
 import { config } from './config.js';
 
 /**
- * Pure JSONP caller. Caller must supply params.email if available.
+ * callBackend — unified wrapper for calling Apps Script web app endpoints
+ * Automatically includes the signed-in user's email (if provided)
  */
-export function callBackend(params = {}) {
-  return new Promise((resolve, reject) => {
-    const callbackName = 'jsonpCallback_' + Math.random().toString(36).substring(2);
+export async function callBackend(params = {}) {
+  const { page = 'team', team = '', email = '' } = params;
 
-    // Build the full URL with query params
-    const url = new URL(config.backendUrl);
-    Object.keys(params).forEach(key => {
-      if (params[key] !== undefined && params[key] !== null) {
-        url.searchParams.append(key, params[key]);
-      }
-    });
-    url.searchParams.append('callback', callbackName);
+  // Include current user’s email when available
+  const query = new URLSearchParams({
+    page,
+    team,
+    ...(email ? { email } : {}) // only include if not empty
+  });
 
-    // Global callback for JSONP
-    window[callbackName] = (data) => {
-      resolve(data);
-      cleanup();
-    };
+  const url = `${config.backendUrl}?${query.toString()}`;
+  console.log(`callBackend(): ${url}`);
 
-    const timeout = setTimeout(() => {
-      reject(new Error('JSONP request timed out'));
-      cleanup();
-    }, 10000);
+  try {
+    const res = await fetch(url, { method: 'GET', redirect: 'follow' });
+    const text = await res.text();
 
-    function cleanup() {
-      try { delete window[callbackName]; } catch(e){}
-      clearTimeout(timeout);
-      if (script && script.parentNode) script.parentNode.removeChild(script);
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (err) {
+      console.error('Backend did not return valid JSON:', text);
+      throw err;
     }
 
-    const script = document.createElement('script');
-    script.src = url.toString();
-    script.async = true;
-    script.onerror = () => {
-      reject(new Error('JSONP request failed'));
-      cleanup();
-    };
+    if (!res.ok) {
+      throw new Error(`Backend error: ${res.status} ${res.statusText}`);
+    }
 
-    document.body.appendChild(script);
-  });
+    console.log('Backend data received:', data);
+    return data;
+  } catch (err) {
+    console.error('callBackend() failed:', err);
+    return { success: false, error: err.message };
+  }
 }
+

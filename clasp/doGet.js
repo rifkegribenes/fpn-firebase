@@ -12,7 +12,9 @@ function doGet(e) {
     const emailParam = params.email || ''; // renamed for clarity
     const callback = params.callback;
 
-    console.log('emailParam:', emailParam);
+
+
+    console.log(`doGet: page=${page}, team=${team}, emailParam=${emailParam}`);
     console.log('all params:', JSON.stringify(params));
 
     // more explicit session + auth info
@@ -39,6 +41,7 @@ function doGet(e) {
     const teamObj = globalLookup(team);
     const announcements = getRecentAnnouncements(teamObj);
     const minutes = getLatestMinutesFiles(teamObj, MINUTES_FOLDER_ID, 10);
+    const opsPlanLink = getLatestOpsFile(teamObj, OPS_FOLDER_ID);
 
     let message = null;
     let responseData;
@@ -62,6 +65,7 @@ function doGet(e) {
         isTeamPageEditor,
         announcements,
         minutes,
+        opsPlanLink,
         debug: {
           authMode,
           activeUserEmail,

@@ -160,6 +160,9 @@ function getRecentAnnouncements(teamObj) {
   });
 
   // Get the top 3 announcements
+  // deleteURL is set in the formResponseHandler attached to the team page update form: 
+  // https://script.google.com/u/0/home/projects/1xWX3LCTgnR5oa0xSbH57MNif6BVLTtQnjpe7WmfSdcbstiXy6T5eCxoV/edit
+  // onFormSubmitHandler
   const recentAnnouncements = announcementRows.slice(0, 3).map(row => {
     return {
       timestamp: new Date(row[TIMESTAMP_COL]),

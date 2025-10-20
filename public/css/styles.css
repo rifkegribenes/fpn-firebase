@@ -73,24 +73,64 @@
       font-size: 24px;
     }
 
-    #refreshBtn {
-      background: rgb(34, 110, 147);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      padding: 6px 12px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      margin: 10px 0;
-      transition: background 0.2s ease;
-    }
-    #refreshBtn:hover {
-      background: #2563eb;
-    }
-    #refreshBtn:disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-    }
+   /* Admin button container */
+#adminButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-start;
+  font-family: 'Lato', sans-serif;
+  margin: 16px 0;
+}
+
+/* Base style for all admin buttons and the update link */
+#adminButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+#adminButtons button,
+#adminButtons .responsiveLink {
+  flex: 0 1 140px; /* narrower, like “Update page” */
+  background: rgb(34, 110, 147);
+  color: white;
+  border: none;
+  border-radius: 0;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: 'Lato', sans-serif;
+  font-weight: 400;
+  text-decoration: none;
+  text-align: center;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+#adminButtons button:hover,
+#adminButtons .responsiveLink:hover {
+  background: rgb(48, 132, 172); /* lighter version of base color */
+}
+
+#adminButtons button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  #adminButtons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #adminButtons button,
+  #adminButtons .responsiveLink {
+    width: 100%;
+  }
+}
+
 
 
     #loadingSpinner {

@@ -18,7 +18,38 @@ const provider = new GoogleAuthProvider();
 
 let currentUser = null;
 
-// --- Setup login/logout UI ---
+/**
+ * Handle post-login success — clear cache, re-fetch backend, re-render.
+ */
+async function handleLoginSuccess() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const team = urlParams.get('team') || '';
+
+  console.log(`handleLoginSuccess() — refreshing data for team "${team}"`);
+
+  // Clear cached data so roles update
+  localStorage.removeItem(`teamData_${team}`);
+
+  // Wait for Firebase to ensure user is current
+  if (!currentUser) {
+    console.warn('handleLoginSuccess: currentUser not ready yet.');
+    await new Promise(resolve =>
+      onAuthStateChanged(auth, user => {
+        if (user) {
+          currentUser = user;
+          resolve();
+        }
+      })
+    );
+  }
+
+  // Re-init app (pass current user explicitly)
+  await init(currentUser);
+}
+
+/**
+ * Setup login/logout buttons and Firebase auth listener.
+ */
 function setupAuthUI() {
   const loginBtn = document.getElementById("loginBtn");
   const logoutBtn = document.getElementById("logoutBtn");
@@ -32,26 +63,37 @@ function setupAuthUI() {
     logoutBtn.addEventListener('click', () => signOut(auth));
   }
 
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, async (user) => {
     currentUser = user;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const team = urlParams.get('team') || '';
+
     if (user) {
+      console.log("Logged in as:", user.email);
       userInfo.innerText = `Signed in as ${user.email}`;
       loginBtn.hidden = true;
       logoutBtn.hidden = false;
+
+      await handleLoginSuccess();
     } else {
-      // userInfo.innerText = 'Not signed in';
+      console.log("Logged out");
+      userInfo.innerText = '';
       loginBtn.hidden = false;
       logoutBtn.hidden = true;
+
+      // Clear any cached data for privacy
+      localStorage.removeItem(`teamData_${team}`);
+
+      // Render public (non-admin) version of the page
+      await init();
     }
-    // Load team data (reloads when user state changes)
-    init();
   });
 }
 
 document.addEventListener('DOMContentLoaded', setupAuthUI);
 
 let data = null;
-
 const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 
 function getCachedData(team) {
@@ -85,28 +127,20 @@ function cacheData(team, data) {
   }
 }
 
-
-/**
- * Wait until an element exists in the DOM before using it.
- */
 function waitForElement(selector, timeout = 5000) {
   return new Promise((resolve, reject) => {
     const start = performance.now();
-
     function check() {
       const el = document.querySelector(selector);
       if (el) return resolve(el);
-      if (performance.now() - start > timeout) return reject(new Error(`Element ${selector} not found`));
+      if (performance.now() - start > timeout)
+        return reject(new Error(`Element ${selector} not found`));
       requestAnimationFrame(check);
     }
-
     check();
   });
 }
 
-/**
- * Show or hide the loading spinner.
- */
 function setLoading(loading) {
   const spinner = document.getElementById('loadingSpinner');
   if (!spinner) return;
@@ -114,13 +148,25 @@ function setLoading(loading) {
   spinner.style.pointerEvents = loading ? 'auto' : 'none';
 }
 
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',  // "Jan", "Feb", ...
+    day: 'numeric',  // 1–31
+    year: 'numeric'  // 2025
+  }).format(date);
+}
+
 /**
- * Main init function: fetch data and render page.
+ * Main init() — loads team data from backend, uses user email if logged in.
  */
-async function init() {
+async function init(user = currentUser) {
   const urlParams = new URLSearchParams(window.location.search);
   const page = urlParams.get('page') || 'team';
   const team = urlParams.get('team') || '';
+
+  const effectiveEmail = user?.email || '';
+  console.log(`init() called — team=${team}, user=${effectiveEmail || 'anonymous'}`);
 
   const cached = getCachedData(team);
   if (cached) {
@@ -128,29 +174,29 @@ async function init() {
     renderTeamPage(cached);
     setLoading(false);
 
-    // ✅ Attach refresh button listener (once)
+    // Ensure refresh button works
     const refreshBtn = document.getElementById('refreshBtn');
     if (refreshBtn && !refreshBtn.dataset.listenerAttached) {
       refreshBtn.addEventListener('click', refreshData);
       refreshBtn.dataset.listenerAttached = 'true';
     }
 
-    // Trigger backend update *without waiting*
-    callBackend({ page, team })
+    // Background refresh (non-blocking)
+    callBackend({ page, team, email: effectiveEmail })
       .then(fresh => {
         if (fresh?.success) {
           cacheData(team, fresh);
-          renderTeamPage(fresh); // silently refresh page
+          renderTeamPage(fresh);
         }
       })
       .catch(err => console.error('Background refresh failed:', err));
-    return; // done — don’t block on await
+    return;
   }
 
-  // Fallback when no cache
+  // Fallback — no cache, fetch fresh data
   setLoading(true);
   try {
-    const data = await callBackend({ page, team });
+    const data = await callBackend({ page, team, email: effectiveEmail });
     if (data?.success) {
       cacheData(team, data);
       renderTeamPage(data);
@@ -160,7 +206,7 @@ async function init() {
   } finally {
     setLoading(false);
 
-    // Attach refresh button listener (once)
+    // Attach refresh listener once
     const refreshBtn = document.getElementById('refreshBtn');
     if (refreshBtn && !refreshBtn.dataset.listenerAttached) {
       refreshBtn.addEventListener('click', refreshData);
@@ -169,16 +215,12 @@ async function init() {
   }
 }
 
-
-
-
-
 /**
  * Render the team page after data is ready.
  */
 export async function renderTeamPage(data) {
-  console.log(data);
-  // Wait for critical DOM elements
+  console.log('renderTeamPage() data:', data);
+
   const [
     title,
     announcementsDiv,
@@ -197,29 +239,21 @@ export async function renderTeamPage(data) {
     waitForElement('#drive')
   ]);
 
-
-  // Show Refresh button only if user is a Team Page Editor
   const refreshBtn = document.getElementById('refreshBtn');
-  if (data.isTeamPageEditor) {
-    refreshBtn.style.display = 'inline-block';
-  } else {
-    refreshBtn.style.display = 'none';
-  }
+  refreshBtn.style.display = data.isTeamPageEditor ? 'inline-block' : 'none';
 
   const team = data.teamObj || {};
   title.innerText = data.page === 'teamLinks'
     ? 'Team Links'
     : `${team.teamName || 'Unknown'} Team`;
 
-  // Announcements
+  // --- Announcements ---
   announcementsDiv.innerHTML = '';
-
   if (data.announcements?.length) {
     data.announcements.forEach(a => {
       const div = document.createElement('div');
       div.className = 'announcement-item';
 
-      // Add admin controls if the user is a team page editor
       let adminBlock = '';
       if (data.isTeamPageEditor) {
         const deleteURLWithParams = `${a.deleteURL}&page=team&team=${data.teamObj.shortName}`;
@@ -238,21 +272,35 @@ export async function renderTeamPage(data) {
         <small>${new Date(a.timestamp).toLocaleString()}</small>
         ${adminBlock}
       `;
-
       announcementsDiv.appendChild(div);
     });
   } else {
-    announcementsDiv.innerHTML = `<p>No announcements found for ${data.teamObj.teamName}.</p>`;
+    announcementsDiv.innerHTML = `<p>No announcements found for ${team.teamName}.</p>`;
   }
 
-
-  // Minutes
+  // --- Minutes ---
   minutesDiv.innerHTML = '';
   if (data.minutes?.length) {
     const ul = document.createElement('ul');
-    data.minutes.forEach(m => {
+    data.minutes.forEach(file => {
       const li = document.createElement('li');
-      li.innerHTML = `<a href="https://drive.google.com/open?id=${m.id}" target="_blank">${m.name}</a>`;
+      const createdDateStr = file.createdTime || null;
+      let formattedDate = 'Unknown date';
+      let mtgDateParsed;
+
+      if (file.description) {
+        mtgDateParsed = file.description.split(",")[1] || null;
+      }
+      if (mtgDateParsed) {
+        formattedDate = formatDate(new Date(mtgDateParsed));
+      } else if (createdDateStr) {
+        const createdDate = new Date(createdDateStr);
+        formattedDate = formatDate(createdDate);
+      }
+
+      const linkText = `${team.teamName} minutes ${formattedDate}`;
+      const url = `https://drive.google.com/file/d/${file.id}/view`;
+      li.innerHTML = `<a href="${url}" target="_blank">${linkText}</a>`;
       ul.appendChild(li);
     });
     minutesDiv.appendChild(ul);
@@ -260,46 +308,94 @@ export async function renderTeamPage(data) {
     minutesDiv.innerHTML = `<p>No minutes found for ${team.teamName}.</p>`;
   }
 
-  // Events
-  eventsDiv.innerHTML = `<p>No calendar found for ${team.teamName}.</p>`;
-  opsDiv.innerHTML = `<p>No operations plan found for ${team.teamName}.</p>`;
+  // Calendar / Events
+  eventsDiv.innerHTML = '';
+  if (data.teamObj?.teamCal) {
+    const calendarUrl =
+      data.teamObj.calendarUrl ||
+      `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(data.teamObj.teamCal)}&ctz=America/Los_Angeles`;
+    eventsDiv.innerHTML = `
+      <iframe 
+        src="${data.teamObj.teamCal}" 
+        style="border: 0; width: 100%; height: 400px;" 
+        frameborder="0" 
+        scrolling="no">
+      </iframe>`;
+  } else {
+    eventsDiv.innerHTML = `<p>No calendar found for ${team.teamName}.</p>`;
+  }
 
-  // Group email
+  // Operations Plan
+  opsDiv.innerHTML = '';
+  if (data.opsPlanLink) {
+    const file = data.opsPlanLink;
+    // console.log(`opsPlan`, file);
+    const createdDateStr = file.createdTime || null;
+    let formattedDate = 'Unknown date';
+    if (createdDateStr) {
+      const createdDate = new Date(createdDateStr);
+      formattedDate = formatDate(createdDate);
+    }
+    const linkText = `${team.teamName} Operations Plan`;
+    const url = `https://drive.google.com/file/d/${file.id}/view`;
+    // console.log(linkText, url);
+    opsDiv.innerHTML = `
+      <a href="${url}" target="_blank">
+        ${linkText}
+      </a>`;
+  } else {
+    opsDiv.innerHTML = `<p>No operations plan found for ${team.teamName}.</p>`;
+  }
+
   groupDiv.innerHTML = team.groupEmail
-    ? `<a href="mailto:${team.groupEmail}">${team.groupEmail}</a>`
+    ? `<p><a href=https://groups.google.com/a/friendsofportlandnet.org/g/${team.shortName}}>${team.teamName} Google Group</a></p>`
     : `<p>No Google group found for ${team.teamName}.</p>`;
 
-  // Drive link
   driveDiv.innerHTML = team.teamDrive
-    ? `<a href="${team.teamDrive}" target="_blank">Team Drive</a>`
+    ? `<p><a href=${team.teamDrive}>${teamObj.teamName} shared Drive</a> (access other team documents here)</p>`
     : `<p>Shared Drive for ${team.teamName} has not been set up yet.</p>`;
+
+
+  // --- Team Update Link (conditionally rendered) ---
+  const updateContainer = document.getElementById('teamUpdateContainer');
+  updateContainer.innerHTML = ''; // clear previous content
+
+  if (data.isTeamPageEditor && data.teamObj?.teamName) {
+    const updateLink = document.createElement('a');
+    updateLink.id = 'teamUpdateLink';
+    updateLink.href = `https://docs.google.com/forms/d/e/1FAIpQLSe9TU8URPswEVELyy9jOImY2_2vJ9OOE7O8L5JlNUuiJzPQYQ/viewform?usp=pp_url&entry.1458714000=${encodeURIComponent(data.teamObj.teamName)}`;
+    updateLink.target = '_blank';
+    updateLink.className = 'responsiveLink';
+    updateLink.textContent = 'Update page';
+
+    updateContainer.appendChild(updateLink);
+  }  
 }
 
+/**
+ * Manually refresh data from backend.
+ */
 async function refreshData() {
   const refreshBtn = document.getElementById('refreshBtn');
   const urlParams = new URLSearchParams(window.location.search);
   const team = urlParams.get('team') || '';
   if (!team) return;
 
-  // Disable button while refreshing
   refreshBtn.disabled = true;
   refreshBtn.textContent = 'Refreshing...';
 
-  // Clear cached data
   localStorage.removeItem(`teamData_${team}`);
   console.log(`Cache cleared for team "${team}"`);
 
-  // Show spinner while reloading
   setLoading(true);
-
   try {
-    await init(); // re-fetch and re-render
+    await init(currentUser);
   } catch (err) {
     console.error('Error refreshing data:', err);
   } finally {
-    // Re-enable button after reload
     refreshBtn.disabled = false;
-    refreshBtn.textContent = '🔄 Refresh Data';
+    refreshBtn.textContent = 'Refresh Data';
+    setLoading(false);
   }
 }
 
