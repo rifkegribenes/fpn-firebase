@@ -307,11 +307,11 @@ function getTeamLinks() {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const teamIndex = headers.indexOf('Team');
-  const urlIndex = headers.indexOf('Team page');
+  const shortNamIndex = headers.indexOf('Short name');
 
   const links = data.slice(1).map(row => ({
     name: row[teamIndex],
-    url: row[urlIndex]
+    shortName: row[shortNamIndex]
   }));
 
   return links;

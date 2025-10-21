@@ -7,176 +7,138 @@
 </head>
 <body>
   <div id="app">
-    <div id="logoContainer">
-      <a href="https://sites.google.com/friendsofportlandnet.org/teamspace/home">
-        <img id="logo" alt="Friends of Portland NET" src="/img/logo.png">
-      </a>
+    <div class="pageContainer">
+      <!-- ===== HEADER / LOGO ===== -->
+      <div id="logoContainer">
+        <a href="https://sites.google.com/friendsofportlandnet.org/teamspace/home">
+          <img id="logo" alt="Friends of Portland NET" src="/img/logo.png">
+        </a>
+      </div>
     </div>
-    <div id="loadingSpinner">
-      <div class="spinner"></div>
-      <p>Loading team data...</p>
-    </div>
-    <div id="teamInfo"></div>
-    <h1 id="pageTitle">Team Page</h1>
-    <div id="image"></div>
-    <div class="publicContent">
-      <div class="quickLinks" id="quickLinks">
-        <p class="qlHed">Quick Links</p>
-        <p class="qlP"><a href="https://volunteerpdx.net" target="_blank">Portland NET Wiki</a>
-        <p class="qlP"><a href="https://app.betterimpact.com/" target="_blank">Log hours on MIP</a>
+
+    <!-- ===== LOADING SPINNER ===== -->
+      <div id="loadingSpinner">
+        <div class="spinner"></div>
+        <p>Loading team data...</p>
       </div>
 
-      <div class="pcContainer container" style="
-        display: flex !important;
-        flex-direction: column !important;  
-        flex-wrap: nowrap !important;
-        width: 100%;
-      ">
-        <div id="editor"></div>
-        <div class="announcements block" style="
-          max-width: 100% !important;
-          margin-bottom: 24px;
-        ">
-          <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Announcements</h3>
-          <div id="announcements" class="announcements cont" style="
-            padding-right: 0 !important;
-            margin-right: 0 !important;
-            border-right: none !important;
-          ">
-          </div>
-        </div>
 
-        <div class="calendar block" style="
-          max-width: 100% !important;
-          margin-bottom: 24px;
-        ">
-          <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Upcoming Events</h3>
-          <div id="events" class="calendar cont" style="
-            max-width: 100% !important;
-            padding-right: 0 !important;
-            margin-right: 0 !important;
-            border-right: none !important;
-          ">
-          </div>
-        </div>
+    <!-- ===== TEAMLINKS ===== -->
+    <div id="linksContent" class="pageContainer">
+      <div id="teamLinks"></div>
+    </div>
 
-        <div class="pcColumnContainer container" style="
-          display: flex !important;
-          flex-direction: column !important;
-          flex-wrap: nowrap !important;
-          max-width: 100% !important;
-        ">
-          <div class="minutes block" style="
-            padding-bottom: 20px;
-            margin-bottom: 20px;
-            border-bottom: 1px dotted #ccc;
-          ">
-            <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Meeting Minutes</h3>
-            <div id="minutes" class="minutes cont">
+
+    <div id="teamContent" class="pageContainer">
+
+      <!-- ===== PAGE TITLE ===== -->
+      <div id="teamInfo"></div>
+      <h1 id="pageTitle">Team Page</h1>
+      <div id="image"></div>
+
+      <!-- ===== PUBLIC CONTENT ===== -->
+      <div class="publicContent">
+
+        <!-- ===== MAIN + SIDEBAR CONTAINER ===== -->
+        <div class="pcContainer container">
+          <!-- ===== MAIN CONTENT ===== -->
+          <div class="mainContent">
+            <div id="editor"></div>
+
+            <section class="block announcements">
+              <h3 class="blockhead">Announcements</h3>
+              <div id="announcements" class="cont"></div>
+            </section>
+
+            <section class="block calendar">
+              <h3 class="blockhead">Upcoming Events</h3>
+              <div id="events" class="cont"></div>
+            </section>
+          </div>
+
+          <!-- ===== SIDEBAR ===== -->
+          <aside class="sidebar">
+
+            <!-- ===== QUICK LINKS ===== -->
+            <div class="quickLinks" id="quickLinks">
+              <p class="qlHed">Quick Links</p>
+              <p class="qlP"><a href="https://volunteerpdx.net" target="_blank">Portland NET Wiki</a></p>
+              <p class="qlP"><a href="https://app.betterimpact.com/" target="_blank">Log hours on MIP</a></p>
             </div>
-          </div>
 
-          <div class="ops block" style="
-            padding-bottom: 20px;
-            margin-bottom: 20px;
-            border-bottom: 1px dotted #ccc;
-          ">
-            <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Operations Plan</h3>
-            <div id="ops" class="ops cont">
-            </div>
-          </div>
+            <section class="sidebar-section minutes">
+              <h4>Meeting Minutes</h4>
+              <div id="minutes" class="cont"></div>
+            </section>
 
-          <div class="grouplink block" style="
-            padding-bottom: 20px;
-            margin-bottom: 20px;
-            border-bottom: 1px dotted #ccc;
-          ">
-            <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Google Group</h3>
-            <div id="group" class="gGroup cont">
-            </div>
-          </div>
+            <section class="sidebar-section ops">
+              <h4>Operations Plan</h4>
+              <div id="ops" class="cont"></div>
+            </section>
 
-          <div class="drivelink block">
-            <h3 class="blockhead" style="font-size: 1.5rem; margin-bottom: 12px;">Team Drive</h3>
-            <div id="drive" class="gDrive cont">
-            </div>
-          </div>
+            <section class="sidebar-section group">
+              <h4>Google Group</h4>
+              <div id="group" class="cont"></div>
+            </section>
+
+            <section class="sidebar-section drive">
+              <h4>Team Drive</h4>
+              <div id="drive" class="cont"></div>
+            </section>
+
+            <!-- ===== ADMIN / FOOTER ===== -->
+              <div id="content"></div>
+
+              <div id="adminButtons">
+                <div id="teamUpdateContainer"></div>
+                <button id="refreshBtn" hidden>Refresh data</button>
+                <button id="loginBtn">Login</button>
+                <button id="logoutBtn" hidden>Logout</button>
+              </div>
+
+              <div id="userInfo"></div>
+            
+          </aside>
         </div>
       </div>
     </div>
-    <div id="content"></div>
-    <div id="adminButtons">
-      <div id="teamUpdateContainer"></div>
-      <button id="refreshBtn" style="display:none;">Refresh Data</button>
-      <button id="loginBtn" >Admin login</button>
-      <button id="logoutBtn" hidden>Sign out</button>
-    </div>
-    <div id="userInfo"></div>
   </div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { callBackend } from './js/api.js';
-  import { renderTeamPage } from './js/teamRender.js';
-  import { config } from './js/config.js';
 
-  // Initialize Firebase app (from your config.js export)
-  const app = initializeApp(config.firebase);
-  const auth = getAuth(app);
+  <!-- ===== JS IMPORTS ===== -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { callBackend } from './js/api.js';
+    import { renderTeamPage } from './js/teamRender.js';
+    import { config } from './js/config.js';
 
-  document.addEventListener('DOMContentLoaded', () => {
-    const params = new URLSearchParams(window.location.search);
-    const page = 'team';
-    const team = params.get('team') || '';
+    const app = initializeApp(config.firebase);
+    const auth = getAuth(app);
 
-    // Wait for Firebase Auth to initialize, then call backend with email (if any)
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      unsubscribe(); // we only need the first state for initial load
+    document.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const team = params.get('team') || '';
 
-      const email = user?.email || ''; // '' if not logged in
-      console.log('onAuthStateChanged user email:', email);
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        unsubscribe();
+        const email = user?.email || '';
+        callBackend({ page: 'team', team, email })
+          .then(data => {
+            if (data?.error) console.error('Backend error:', data.error);
+            else renderTeamPage(data);
+          })
+          .catch(err => console.error('Fetch error:', err));
+      });
 
-      // Call backend with email param (if signed in)
-      callBackend({ page, team, email })
-        .then(data => {
-          console.log('Backend response debug:', data?.debug || data);
-          if (data?.error) {
-            console.error('Backend error:', data.error);
-            return;
-          }
-          renderTeamPage(data);
-        })
-        .catch(err => {
-          console.error('Fetch error:', err);
-        });
-    });
-
-    // Safety: if onAuthStateChanged doesn't fire in 2s, still call backend anonymously
-    setTimeout(async () => {
-      // If onAuthStateChanged already fired and unsubscribed, do nothing
-      // (unsubscribe will have been called)
-      try {
-        // If there is no active user yet, call backend anonymously
-        const user = auth.currentUser;
-        if (!user) {
-          console.warn('Auth not ready within timeout — calling backend anonymously');
-          const data = await callBackend({ page, team, email: '' });
-          if (data?.error) {
-            console.error('Backend error:', data.error);
-            return;
-          }
-          renderTeamPage(data);
+      // fallback fetch if auth not ready
+      setTimeout(async () => {
+        if (!auth.currentUser) {
+          const data = await callBackend({ page: 'team', team, email: '' });
+          if (!data?.error) renderTeamPage(data);
         }
-      } catch (e) {
-        console.error('Fallback anonymous fetch failed', e);
-      }
-    }, 2000);
-  });
-</script>
-
-
-
-
+      }, 2000);
+    });
+  </script>
 </body>
 </html>

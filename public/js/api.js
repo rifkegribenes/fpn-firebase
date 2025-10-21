@@ -6,11 +6,10 @@ import { config } from './config.js';
  * Automatically includes the signed-in user's email (if provided)
  */
 export async function callBackend(params = {}) {
-  const { page = 'team', team = '', email = '' } = params;
+  const { team = '', email = '' } = params;
 
   // Include current user’s email when available
   const query = new URLSearchParams({
-    page,
     team,
     ...(email ? { email } : {}) // only include if not empty
   });

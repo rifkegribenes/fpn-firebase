@@ -1,26 +1,51 @@
 function doGet(e) {
   console.log('--- doGet called ---');
-  console.log('Raw e object:', JSON.stringify(e)); // full visibility into incoming params
+  console.log('Raw e object:', JSON.stringify(e));
 
   try {
-    // extract parameters
-    const params = e && e.parameter ? e.parameter : {};
+    // --- Extract params safely ---
+    const params = e?.parameter || {};
     const action = params.action || '';
     const responseId = params.id || '';
-    const page = params.page || 'team';
     const team = params.team || '';
-    const emailParam = params.email || ''; // renamed for clarity
+    const emailParam = params.email || '';
     const callback = params.callback;
 
-
-
-    console.log(`doGet: page=${page}, team=${team}, emailParam=${emailParam}`);
+    console.log(`doGet: team=${team}, emailParam=${emailParam}`);
     console.log('all params:', JSON.stringify(params));
 
-    // more explicit session + auth info
+    // --- EARLY RETURN: teamLinks page (no team param) ---
+    if (!team) {
+      console.log('Serving teamLinks only – skipping auth and team lookups.');
+      const teamLinks = getTeamLinks();
+
+      const responseData = {
+        success: true,
+        message: 'success: teamLinks',
+        page: 'teamLinks',
+        teamLinks,
+        debug: {
+          timestamp: new Date().toISOString(),
+          note: 'No auth or team lookups were performed for teamLinks page.'
+        }
+      };
+
+      const json = JSON.stringify(responseData);
+      if (callback) {
+        return ContentService
+          .createTextOutput(`${callback}(${json})`)
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      } else {
+        return ContentService
+          .createTextOutput(json)
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+
+    // --- AUTH & ROLE LOGIC (only if team param exists) ---
     const activeUser = Session.getActiveUser();
     const activeUserEmail = activeUser ? activeUser.getEmail() : null;
-    const authMode = e ? e.authMode : 'none';
+    const authMode = e?.authMode || 'none';
     const effectiveEmail = emailParam || activeUserEmail || 'anonymous@public';
 
     console.log({
@@ -30,34 +55,40 @@ function doGet(e) {
       effectiveEmail
     });
 
-    // check roles using effectiveEmail (the merged source)
     const isAdmin = checkGroupMembership(ADMIN_GROUP_EMAIL, effectiveEmail);
     const isTeamLead = checkGroupMembership(TEAM_LEADS_GROUP_EMAIL, effectiveEmail);
     const isTeamPageEditor = (isTeamLead && effectiveEmail.includes(team)) || isAdmin;
 
-    console.log('Email:', effectiveEmail, 'isAdmin:', isAdmin, 'isTeamLead:', isTeamLead, 'isTeamPageEditor:', isTeamPageEditor);
+    console.log(
+      'Email:',
+      effectiveEmail,
+      'isAdmin:',
+      isAdmin,
+      'isTeamLead:',
+      isTeamLead,
+      'isTeamPageEditor:',
+      isTeamPageEditor
+    );
 
-    // load data
+    // --- MAIN TEAM DATA LOOKUPS ---
     const teamObj = globalLookup(team);
     const announcements = getRecentAnnouncements(teamObj);
     const minutes = getLatestMinutesFiles(teamObj, MINUTES_FOLDER_ID, 10);
     const opsPlanLink = getLatestOpsFile(teamObj, OPS_FOLDER_ID);
 
-    let message = null;
     let responseData;
-
     if (action === 'delete' && responseId) {
       console.log('Attempting delete for responseId:', responseId);
       const deleted = deleteFormResponse(responseId);
-      message = deleted ? 'Announcement deleted successfully.' : 'Failed to delete announcement.';
+      const message = deleted
+        ? 'Announcement deleted successfully.'
+        : 'Failed to delete announcement.';
       responseData = { success: deleted, message };
-    } else if (page === 'teamLinks') {
-      responseData = { success: true, message: 'success: teamLinks', page: 'teamLinks' };
     } else {
       responseData = {
         success: true,
         message: 'success: team',
-        page,
+        page: 'team',
         team,
         teamObj,
         isAdmin,
@@ -80,16 +111,17 @@ function doGet(e) {
       };
     }
 
-    // return JSON or JSONP
+    // --- RETURN JSON or JSONP ---
     const json = JSON.stringify(responseData);
     if (callback) {
       return ContentService
         .createTextOutput(`${callback}(${json})`)
         .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    } else {
+      return ContentService
+        .createTextOutput(json)
+        .setMimeType(ContentService.MimeType.JSON);
     }
-    return ContentService
-      .createTextOutput(json)
-      .setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
     console.error('doGet ERROR:', err);
@@ -121,6 +153,8 @@ function doGet(e) {
 
     return ContentService
       .createTextOutput(output)
-      .setMimeType(callback ? ContentService.MimeType.JAVASCRIPT : ContentService.MimeType.JSON);
+      .setMimeType(callback
+        ? ContentService.MimeType.JAVASCRIPT
+        : ContentService.MimeType.JSON);
   }
 }
