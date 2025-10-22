@@ -1,6 +1,23 @@
 import { callBackend } from './api.js';
 import { config } from './config.js';
 
+// --- GLOBAL GUARDS AND STATE ---
+let currentUser = null;
+let initHasRun = false;
+let lastLoginEmail = null;
+
+
+// Make this globally persistent so multiple calls skip redundant init
+async function safeInit(user) {
+  if (initHasRun) {
+    console.log('safeInit(): skipped — init already completed this session.');
+    return;
+  }
+  await init(user);
+  initHasRun = true;
+}
+
+
 // Global helper
 function setLoading(loading, message = "Loading...") {
   const spinner = document.getElementById('loadingSpinner');
@@ -9,14 +26,31 @@ function setLoading(loading, message = "Loading...") {
   const messageEl = spinner.querySelector('p');
   if (messageEl) messageEl.textContent = message;
 
+  // Clear any previous safety timer
+  clearTimeout(spinner._safetyTimer);
+
   if (loading) {
+    // Show spinner smoothly
     spinner.style.display = 'flex';
-    requestAnimationFrame(() => spinner.style.opacity = '1');
+    requestAnimationFrame(() => (spinner.style.opacity = '1'));
+
+    // --- Safety auto-hide after 10s ---
+    spinner._safetyTimer = setTimeout(() => {
+      spinner.style.opacity = '0';
+      setTimeout(() => {
+        spinner.style.display = 'none';
+      }, 300);
+      console.warn('setLoading(): Spinner auto-hidden after 4s safety timeout');
+    }, 4000);
   } else {
+    // Hide spinner normally
     spinner.style.opacity = '0';
-    setTimeout(() => spinner.style.display = 'none', 300);
+    setTimeout(() => {
+      spinner.style.display = 'none';
+    }, 300);
   }
 }
+
 
 
 // --- Firebase imports ---
@@ -34,12 +68,9 @@ const app = initializeApp(config.firebase);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-let currentUser = null;
-
 /**
  * Handle post-login success — clear cache, re-fetch backend, re-render.
  */
-let lastLoginEmail = null;
 
 async function handleLoginSuccess() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -49,20 +80,18 @@ async function handleLoginSuccess() {
 
   console.log(`handleLoginSuccess() — current=${currentEmail}, last=${lastEmail}, team="${team}"`);
 
-  // Only clear cache if user changed
+  // --- Handle user switch ---
   if (currentEmail && lastEmail && currentEmail !== lastEmail) {
     console.log(`User changed from ${lastEmail} → ${currentEmail}, clearing cached team data.`);
-    localStorage.removeItem(`teamData_${team}`);
+    if (team) localStorage.removeItem(`teamData_${team}`);
   } else {
     console.log(`handleLoginSuccess() — same user (${currentEmail}), keeping cached data.`);
   }
 
-  // Store current user for next time
-  if (currentEmail) {
-    localStorage.setItem('lastUserEmail', currentEmail);
-  }
+  // --- Persist user email for next login ---
+  if (currentEmail) localStorage.setItem('lastUserEmail', currentEmail);
 
-  // Wait for Firebase to ensure user is ready
+  // --- Ensure Firebase currentUser is ready ---
   if (!currentUser) {
     console.warn('handleLoginSuccess: currentUser not ready yet.');
     await new Promise(resolve =>
@@ -75,10 +104,52 @@ async function handleLoginSuccess() {
     );
   }
 
-  // Re-init app with current user
+  // --- Retrieve cached team data, if any ---
+  const cached = team ? getCachedData(team) : null;
+  const MAX_CACHE_AGE = 60 * 60 * 1000; // 60 minutes
+
+  // --- CASE 1: Cached data exists ---
+  if (cached && cached.data) {
+    const ageMs = Date.now() - (cached.timestamp || 0);
+    console.log(`handleLoginSuccess(): cache age = ${Math.round(ageMs / 1000)}s`);
+
+    // --- Always re-render immediately using cache for fast load ---
+    console.log('handleLoginSuccess(): using cached data — rendering instantly.');
+    renderTeamPage(cached.data);
+    await new Promise(r => setTimeout(r, 150)); // let DOM settle
+    refreshAdminUI(currentUser, cached.data);
+    setLoading(false);
+
+    // --- If cache is stale (older than 60 min), do a silent background refresh ---
+    if (ageMs > MAX_CACHE_AGE) {
+      console.log('Cache is older than 60 minutes — fetching fresh data in background.');
+      (async () => {
+        try {
+          const fresh = await callBackend({ team, email: currentEmail });
+          if (fresh?.success) {
+            cacheData(team, fresh);
+            console.log('Background refresh complete — cache updated.');
+            // Optional: update UI silently without spinner
+            renderTeamPage(fresh);
+            refreshAdminUI(currentUser, fresh);
+          } else {
+            console.warn('Background refresh returned unsuccessful response:', fresh);
+          }
+        } catch (err) {
+          console.error('Background refresh failed:', err);
+        }
+      })();
+    } else {
+      console.log('Cache is fresh (<60 min) — skipping backend call.');
+    }
+
+    return;
+  }
+
+  // --- CASE 2: No cache found — run full init ---
+  console.log('handleLoginSuccess(): no cached data found, running full init.');
   await init(currentUser);
 }
-
 
 
 
@@ -98,59 +169,64 @@ function setupAuthUI() {
     logoutBtn.addEventListener('click', () => signOut(auth));
   }
 
+
   onAuthStateChanged(auth, async (user) => {
-  currentUser = user;
-  const urlParams = new URLSearchParams(window.location.search);
-  const team = urlParams.get('team') || '';
+    currentUser = user;
+    const urlParams = new URLSearchParams(window.location.search);
+    const team = urlParams.get("team") || "";
 
-  console.log("Auth state changed:", user ? `Logged in as ${user.email}` : "Logged out");
+    console.log("Auth state changed:", user ? `Logged in as ${user.email}` : "Logged out");
 
-  const loginBtn = document.getElementById("loginBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
-  const userInfo = document.getElementById("userInfo");
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const userInfo = document.getElementById("userInfo");
 
-  if (!loginBtn || !logoutBtn) {
-    console.warn("Auth buttons not found in DOM when onAuthStateChanged fired.");
-    return;
-  }
+    if (!loginBtn || !logoutBtn) {
+      console.warn("Auth buttons not found in DOM when onAuthStateChanged fired.");
+      return;
+    }
 
-  if (user) {
-    userInfo.innerText = `Signed in as ${user.email}`;
-    loginBtn.hidden = true;
-    logoutBtn.hidden = false;
+    if (user) {
+      userInfo.innerText = `Signed in as ${user.email}`;
+      loginBtn.hidden = true;
+      logoutBtn.hidden = false;
 
-    // Only refresh if team param is present
-    if (team) {
-      try {
-        await handleLoginSuccess();
-      } catch (err) {
-        console.error("Error during login success:", err);
+      if (team) {
+        try {
+          console.log("Auth: user detected — running handleLoginSuccess()");
+          await handleLoginSuccess();
+        } catch (err) {
+          console.error("Error during login success:", err);
+        }
+      }
+    } else {
+      userInfo.innerText = "";
+      loginBtn.hidden = false;
+      logoutBtn.hidden = true;
+
+      if (team) {
+        localStorage.removeItem(`teamData_${team}`);
+        try {
+          console.log("Auth: no user — initializing public view");
+          if (!initHasRun) {
+            await safeInit();
+            initHasRun = true;
+          } else {
+            console.log("Public init skipped — already initialized.");
+          }
+        } catch (err) {
+          console.error("Error initializing public view:", err);
+        }
       }
     }
-  } else {
-    userInfo.innerText = '';
-    loginBtn.hidden = false;
-    logoutBtn.hidden = true;
+  });
 
-    localStorage.removeItem(`teamData_${team}`);
-
-    // Only initialize if team param exists
-    if (team) {
-      try {
-        await init();
-      } catch (err) {
-        console.error("Error initializing public view:", err);
-      }
-    }
-  }
-});
- // <-- closes onAuthStateChanged
 
 } // <-- closes setupAuthUI
 
 document.addEventListener('DOMContentLoaded', setupAuthUI);
 
-const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 function cacheData(team, data) {
   const key = `teamData_${team}`;
@@ -330,14 +406,26 @@ function renderTeamLinks(links) {
  * Main init() — loads team data from backend, uses user email if logged in.
  */
 async function init(user = currentUser) {
+  console.log('init() entered — initHasRun:', initHasRun);
+  if (initHasRun) {
+    console.log('init() skipped — already initialized.');
+    return;
+  }
+  initHasRun = true;
+
   // --- Wait for Firebase auth state if needed ---
   if (!user || !user.email) {
     console.log('init(): user not ready yet — waiting for Firebase auth state...');
     await new Promise(resolve => {
       const unsubscribe = onAuthStateChanged(auth, fbUser => {
         if (fbUser) {
+          console.log(`init(): Firebase returned user ${fbUser.email}`);
           currentUser = fbUser;
-          unsubscribe(); // stop listening once we have a user
+          unsubscribe();
+          resolve();
+        } else {
+          console.log('init(): No logged-in user — continuing as anonymous.');
+          unsubscribe();
           resolve();
         }
       });
@@ -351,44 +439,47 @@ async function init(user = currentUser) {
 
   if (!team) {
     console.log('init() skipped — no team param in URL.');
-    setLoading(false);
+    setLoading(false, '', true);
     return;
   }
 
-  const effectiveEmail = user?.email || '';
+  const effectiveEmail = user?.email || 'anonymous@public';
   console.log(`init() called — team=${team}, user=${effectiveEmail || 'anonymous'}`);
 
   const cached = getCachedData(team);
   console.log('getCachedData() returned:', cached);
 
-  // --- CACHE FRESHNESS GUARD (skip redundant backend call) ---
-  const MAX_CACHE_AGE = 5 * 60 * 1000; // 5 minutes validity
-  if (cached && cached.timestamp && Date.now() - cached.timestamp < MAX_CACHE_AGE) {
-    console.log(`Cache is fresh (age=${Math.round((Date.now() - cached.timestamp) / 1000)}s) — using cache only.`);
-    renderTeamPage(cached.data || cached); // support both old/new cache formats
-    setLoading(false);
+  // --- CACHE FRESHNESS GUARD ---
+  const MAX_CACHE_AGE = 5 * 60 * 1000; // 5 minutes
+  const cacheAge = cached?.timestamp ? Date.now() - cached.timestamp : null;
+
+  if (cached && cacheAge < MAX_CACHE_AGE) {
+    console.log(`Cache is fresh (age=${Math.round(cacheAge / 1000)}s) — using cache only, skipping backend call.`);
+    renderTeamPage(cached.data || cached);
+    setLoading(false, '', true); // instant hide spinner
     attachRefreshListener();
     return;
   }
 
-  // --- CASE 1: Cached data exists (stale but renderable) ---
+  // --- CASE 1: Cached data exists but stale ---
   if (cached) {
     console.log(`Using stale cached data for team "${team}" (background refresh will run).`);
     renderTeamPage(cached.data || cached);
-    setLoading(false); // hide spinner quickly
+    setLoading(false, '', true);
     attachRefreshListener();
 
-    // Non-blocking background refresh
+    // Background refresh, non-blocking
     showRefreshOverlay(true);
-    const hideTimer = setTimeout(() => showRefreshOverlay(false), 2000); // auto-hide overlay after 2s
+    const hideTimer = setTimeout(() => showRefreshOverlay(false), 2000);
 
     try {
+      console.log('callBackend(): refreshing stale data...');
       const fresh = await callBackend({ team, email: effectiveEmail });
       console.log('Background refresh response:', fresh);
       if (fresh?.success) {
-        console.log('Background refresh complete — updating cache and UI');
         cacheData(team, fresh);
         renderTeamPage(fresh);
+        console.log('Background refresh complete — updated cache and UI.');
       } else {
         console.warn('Background refresh returned unsuccessful response:', fresh);
       }
@@ -397,22 +488,24 @@ async function init(user = currentUser) {
     } finally {
       clearTimeout(hideTimer);
       showRefreshOverlay(false);
+      setLoading(false, '', true);
     }
 
     return;
   }
 
-  // --- CASE 2: No cache — fetch fresh data ---
+  // --- CASE 2: No cache available ---
   console.log('No cached data found — fetching fresh data from backend...');
   setLoading(true);
   try {
+    console.log('callBackend(): no-cache initial fetch...');
     const data = await callBackend({ team, email: effectiveEmail });
     console.log('Fresh backend response:', data);
     if (data?.success) {
       cacheData(team, data);
       renderTeamPage(data);
     } else {
-      console.warn('Backend call returned unsuccessful response:', data);
+      console.warn('Backend returned unsuccessful response:', data);
     }
   } catch (err) {
     console.error('Error loading team page data:', err);
@@ -421,6 +514,8 @@ async function init(user = currentUser) {
     attachRefreshListener();
   }
 }
+
+
 
 
 
@@ -488,6 +583,105 @@ function showRefreshOverlay(show) {
   }
 }
 
+async function renderAnnouncements(data) {
+  try {
+    // Wait for #announcements element to exist
+    const announcementsDiv = await waitForElement('#announcements', 3000);
+    if (!announcementsDiv) {
+      console.warn('renderAnnouncements(): #announcements element not found.');
+      return;
+    }
+
+    // Clear existing announcements
+    announcementsDiv.innerHTML = '';
+
+    if (data.announcements?.length) {
+      data.announcements.forEach(a => {
+        const div = document.createElement('div');
+        div.className = 'announcement-item';
+
+        let adminBlock = '';
+        if (data.isTeamPageEditor) {
+          const deleteURLWithParams = `${a.deleteURL}&team=${data.teamObj.shortName}`;
+          adminBlock = `
+            <div class="announcement-admin links">
+              <a href="${a.editURL}" class="edit-link">Edit</a>
+              &nbsp;|&nbsp;
+              <a href="${deleteURLWithParams}" class="delete-link">Delete</a>
+            </div>
+          `;
+        }
+
+        div.innerHTML = `
+          <h4>${a.title}</h4>
+          <div class="date">${new Date(a.timestamp).toLocaleString()}</div>
+          <div class="body">${a.body}</div>
+          ${adminBlock}
+        `;
+
+        announcementsDiv.appendChild(div);
+      });
+    } else {
+      announcementsDiv.innerHTML = `<p>No announcements found for ${data.teamObj?.teamName || 'this team'}.</p>`;
+    }
+  } catch (err) {
+    console.warn('renderAnnouncements(): failed to render announcements', err);
+  }
+}
+
+
+
+async function refreshAdminUI(user = currentUser, data = window.lastRenderedTeamData) {
+  if (!data) {
+    console.warn("refreshAdminUI(): no data available yet — waiting for renderTeamPage...");
+    return;
+  }
+
+  console.log("Refreshing admin UI for user:", user?.email);
+
+  // Wait for adminButtons and announcements to exist
+  try {
+    await waitForElement('#adminButtons', 3000);
+    await waitForElement('#announcements', 3000);
+  } catch (err) {
+    console.warn("refreshAdminUI(): required elements not ready:", err);
+    return;
+  }
+
+  const isAdmin = !!(
+    user?.email &&
+    (data.isAdmin || data.isTeamPageEditor)
+  );
+
+  // Toggle visibility of admin buttons
+  const adminButtons = document.getElementById('adminButtons');
+  if (adminButtons) {
+    adminButtons.style.display = isAdmin ? 'flex' : 'none';
+  }
+
+  // Re-render announcements block (adds edit/delete links)
+  if (typeof renderAnnouncements === 'function') {
+    renderAnnouncements(data);
+  }
+
+  // Re-render the Update Page link
+  const updateContainer = document.getElementById('teamUpdateContainer');
+  if (updateContainer) {
+    updateContainer.innerHTML = '';
+    if (isAdmin && data.teamObj?.teamName) {
+      const updateLink = document.createElement('a');
+      updateLink.id = 'teamUpdateLink';
+      updateLink.href = `https://docs.google.com/forms/d/e/1FAIpQLSe9TU8URPswEVELyy9jOImY2_2vJ9OOE7O8L5JlNUuiJzPQYQ/viewform?usp=pp_url&entry.1458714000=${encodeURIComponent(data.teamObj.teamName)}`;
+      updateLink.target = '_blank';
+      updateLink.className = 'responsiveLink';
+      updateLink.textContent = 'Update page';
+      updateContainer.appendChild(updateLink);
+    }
+  }
+
+  console.log("refreshAdminUI(): UI updated successfully.");
+}
+
 
 
 
@@ -496,6 +690,24 @@ function showRefreshOverlay(show) {
  */
 export async function renderTeamPage(data) {
   console.log('renderTeamPage() data:', data);
+  window.lastRenderedTeamData = data;
+
+  const selectors = [
+    '#pageTitle',
+    '#announcements',
+    '#minutes',
+    '#events',
+    '#ops',
+    '#group',
+    '#drive'
+  ];
+
+  const elements = await Promise.all(
+    selectors.map(sel => waitForElement(sel, 3000).catch(err => {
+      console.warn(`renderTeamPage(): missing element ${sel}`, err);
+      return document.createElement('div'); // safe fallback
+    }))
+  );
 
   const [
     title,
@@ -505,23 +717,18 @@ export async function renderTeamPage(data) {
     opsDiv,
     groupDiv,
     driveDiv
-  ] = await Promise.all([
-    waitForElement('#pageTitle'),
-    waitForElement('#announcements'),
-    waitForElement('#minutes'),
-    waitForElement('#events'),
-    waitForElement('#ops'),
-    waitForElement('#group'),
-    waitForElement('#drive')
-  ]);
+  ] = elements;
 
   const refreshBtn = document.getElementById('refreshBtn');
   refreshBtn.style.display = data.isTeamPageEditor ? 'inline-block' : 'none';
 
   const team = data.teamObj || {};
-  title.innerText = !!team.teamName
-    ? 'Team Links'
-    : `${team.teamName || 'Unknown'} Team`;
+  const urlParams = new URLSearchParams(window.location.search);
+  const teamName = data.teamObj?.teamName || urlParams.get('team');
+
+  title.innerText = team.teamName
+  ? `${team.teamName} NET`
+  : 'Team Links';
 
   // Set sidebar header
   // const sidebarHeader = document.getElementById('sidebarHeader');
@@ -529,36 +736,7 @@ export async function renderTeamPage(data) {
   //   sidebarHeader.textContent = `${data.teamObj.teamName} NET`;
   // }  
 
-  // --- Announcements ---
-  announcementsDiv.innerHTML = '';
-  if (data.announcements?.length) {
-    data.announcements.forEach(a => {
-      const div = document.createElement('div');
-      div.className = 'announcement-item';
-
-      let adminBlock = '';
-      if (data.isTeamPageEditor) {
-        const deleteURLWithParams = `${a.deleteURL}&team=${data.teamObj.shortName}`;
-        adminBlock = `
-          <div class="announcement-admin links">
-            <a href="${a.editURL}" class="edit-link">Edit</a>
-            &nbsp;|&nbsp;
-            <a href="${deleteURLWithParams}" class="delete-link">Delete</a>
-          </div>
-        `;
-      }
-
-      div.innerHTML = `
-        <h4>${a.title}</h4>
-        <div class="date">${new Date(a.timestamp).toLocaleString()}</div>
-        <div class="body">${a.body}</div>
-        ${adminBlock}
-      `;
-      announcementsDiv.appendChild(div);
-    });
-  } else {
-    announcementsDiv.innerHTML = `<p>No announcements found for ${team.teamName}.</p>`;
-  }
+  renderAnnouncements(data);
 
   // --- Minutes ---
   minutesDiv.innerHTML = '';
@@ -661,7 +839,7 @@ export async function renderTeamPage(data) {
     : `<p>No Google group found for ${team.teamName}.</p>`;
 
   driveDiv.innerHTML = team.teamDrive
-    ? `<ul><li><a href=${team.teamDrive}>${teamObj.teamName} shared Drive</a> (access other team documents here)</li></ul>`
+    ? `<ul><li><a href=${team.teamDrive}>${team.teamName} shared Drive</a> (access other team documents here)</li></ul>`
     : `<p>Shared Drive for ${team.teamName} has not been set up yet.</p>`;
 
 
