@@ -597,6 +597,7 @@ export async function renderTeamPage(data) {
   // --- Announcements ---
   announcementsDiv.innerHTML = '';
   if (data.announcements?.length) {
+    console.log('rendering announcments');
     data.announcements.forEach(a => {
       const div = document.createElement('div');
       div.className = 'announcement-item';
