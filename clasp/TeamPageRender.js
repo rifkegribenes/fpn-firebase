@@ -1,12 +1,12 @@
 
 
 // function renderContent(userTeam, userEmail) { //userTeam is shortname
-//   console.log('renderContent');
-//   console.log(`userTeam: ${userTeam}, userEmail: ${userEmail}`);
+//   Logger.log('renderContent');
+//   Logger.log(`userTeam: ${userTeam}, userEmail: ${userEmail}`);
 //   isAdmin = checkGroupMembership(ADMIN_GROUP_EMAIL, userEmail);
 //   isTeamLead = checkGroupMembership(TEAM_LEADS_GROUP_EMAIL, userEmail);
 //   isTeamPageEditor = (isTeamLead && userEmail.includes(userTeam)) || isAdmin;
-//   console.log(`isAdmin: ${isAdmin}, isTeamLead: ${isTeamLead}, isTeamPageEditor: ${isTeamPageEditor}`);
+//   Logger.log(`isAdmin: ${isAdmin}, isTeamLead: ${isTeamLead}, isTeamPageEditor: ${isTeamPageEditor}`);
 
 //   let content = `
 //     <div style="padding: 20px; font-family: Lato, sans-serif;">
@@ -15,14 +15,14 @@
 //     </div>
 //   `;
 
-//   // console.log('content');
-//   // console.log(content);
+//   // Logger.log('content');
+//   // Logger.log(content);
 
 //   return content;
 // }
 
 // function showPublicContent(isTeamPageEditor) {
-//   console.log('showPublicContent');
+//   Logger.log('showPublicContent');
 //   return `
 //     <div class="publicContent">
 //       <h2 style="font-size: 2rem; margin-bottom: 16px;">${teamObj.teamName}</h2>
@@ -167,8 +167,8 @@
 // }
 
 // function renderCalendar() {
-//   console.log(`teamObj.teamCal (242): ${teamObj.shortName}`);
-//   console.log(teamObj.teamCal);
+//   Logger.log(`teamObj.teamCal (242): ${teamObj.shortName}`);
+//   Logger.log(teamObj.teamCal);
   
 //   if (!!teamObj.teamCal) {
 //     return `<iframe 
@@ -184,13 +184,13 @@
 
 
 // function renderMinutesBlock() {
-//   console.log('renderMinutesBlock');
+//   Logger.log('renderMinutesBlock');
 //   try {
 //     const folderId = MINUTES_FOLDER_ID; 
 //     const files = getLatestMinutesFiles(folderId, 10);
 
-//     console.log('files: (minutes, 393)');
-//     console.log(files);
+//     Logger.log('files: (minutes, 393)');
+//     Logger.log(files);
 
 //     if (!!files && files.length) {
 //       let html = `<div class="minutes-block" style="font-family: Lato, sans-serif; font-size: 14px;">`;
@@ -233,10 +233,10 @@
 //   try {
 //     const folderId = OPS_FOLDER_ID; 
 //     const file = getLatestOpsFile(folderId); 
-//     console.log('renderOpsPlan');
-//     console.log(file);
+//     Logger.log('renderOpsPlan');
+//     Logger.log(file);
 //     if (!!file) {
-//       console.log('310');
+//       Logger.log('310');
 //       let html = `<div style="font-family: Lato, sans-serif; font-size: 14px;">`;
 //       const createdDateStr = file.createdTime || null;
 //       let formattedDate = 'Unknown date';
@@ -262,7 +262,7 @@
 // }
 
 // function renderGoogleDrive() {
-//   console.log('renderGoogleDrive()');
+//   Logger.log('renderGoogleDrive()');
 //   const driveURL = teamObj.teamDrive;
 //   if (driveURL) {
 //     return `<p><a href=${driveURL}>${teamObj.teamName} shared Drive</a> (access other team documents here)</p>`

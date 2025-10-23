@@ -63,7 +63,7 @@
 
 
       const team = <?= JSON.stringify(team) ?>.replace(/^['"]|['"]$/g, '');
-      console.log('Team param without quotes:', team);     
+      Logger.log('Team param without quotes:', team);     
 
     if (isMobile) {
       // Increase all text sizes by scaling the base font size of the <body>

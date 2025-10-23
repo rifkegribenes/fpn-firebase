@@ -4,24 +4,38 @@ import { config } from './config.js';
 /**
  * callBackend — unified wrapper for calling Apps Script web app endpoints
  * Automatically includes the signed-in user's email (if provided)
+ * Supports arbitrary actions (e.g., delete, save) and disables caching for them.
  */
 export async function callBackend(params = {}) {
-  const { team = '', email = '' } = params;
+  const { team = '', email = '', action = '', id = '', cache = true } = params;
 
-  // Include current user’s email when available
+  // Build query parameters dynamically
   const query = new URLSearchParams({
-    team,
-    ...(email ? { email } : {}) // only include if not empty
+    ...(team ? { team } : {}),
+    ...(email ? { email } : {}),
+    ...(action ? { action } : {}),
+    ...(id ? { id } : {})
   });
 
   const url = `${config.backendUrl}?${query.toString()}`;
   console.log(`callBackend(): ${url}`);
 
-  try {
-    const res = await fetch(url, { method: 'GET', redirect: 'follow' });
-    const text = await res.text();
+  // Determine if cache should be bypassed
+  const shouldBypassCache =
+    !cache ||
+    (action && action !== 'get') ||
+    url.includes('action=delete');
 
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow',
+      headers: shouldBypassCache ? { 'Cache-Control': 'no-cache' } : {}
+    });
+
+    const text = await res.text();
     let data;
+
     try {
       data = JSON.parse(text);
     } catch (err) {
@@ -40,4 +54,3 @@ export async function callBackend(params = {}) {
     return { success: false, error: err.message };
   }
 }
-

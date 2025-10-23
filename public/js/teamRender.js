@@ -494,6 +494,63 @@ function showRefreshOverlay(show) {
   }
 }
 
+function attachDeleteHandlers() {
+
+  const deleteLinks = document.querySelectorAll('.delete-link');
+  if (!deleteLinks.length) {
+    console.log('attachDeleteHandlers(): no delete links found');
+    return;
+  }
+
+  deleteLinks.forEach(link => {
+    link.addEventListener('click', async (e) => {
+      e.preventDefault();
+
+      const url = new URL(link.href);
+      const action = url.searchParams.get('action');
+      const id = url.searchParams.get('id');
+      const team = url.searchParams.get('team') || new URLSearchParams(window.location.search).get('team');
+
+      if (action !== 'delete' || !id) {
+        console.warn('Invalid delete link:', link.href);
+        return;
+      }
+
+      const confirmDelete = confirm('Are you sure you want to delete this announcement?');
+      if (!confirmDelete) return;
+
+      setLoading(true);
+
+      try {
+        const backendUrl = `${url.origin}${url.pathname}`;
+        const result = await callBackend({
+          team,
+          action,
+          id,
+          email: currentUser?.email || '',
+        });
+
+        if (result?.success) {
+          alert('Announcement deleted successfully.');
+          console.log('Delete response:', result);
+
+          // Reload UI after delete
+          await handleLoginSuccess(); 
+        } else {
+          alert(`Delete failed: ${result?.message || 'Unknown error'}`);
+          console.warn('Delete error:', result);
+        }
+      } catch (err) {
+        console.error('Delete request failed:', err);
+        alert('Failed to delete announcement.');
+      } finally {
+        setLoading(false);
+      }
+    });
+  });
+}
+
+
 
 
 
@@ -687,6 +744,9 @@ export async function renderTeamPage(data) {
 
     updateContainer.appendChild(updateLink);
   }  
+
+  attachDeleteHandlers();
+
 }
 
 /**

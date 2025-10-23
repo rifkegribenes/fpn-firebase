@@ -1,6 +1,6 @@
 function doGet(e) {
-  console.log('--- doGet called ---');
-  console.log('Raw e object:', JSON.stringify(e));
+  Logger.log('--- doGet called ---');
+  Logger.log('Raw e object:', JSON.stringify(e));
 
   try {
     // --- Extract params safely ---
@@ -11,12 +11,12 @@ function doGet(e) {
     const emailParam = params.email || '';
     const callback = params.callback;
 
-    console.log(`doGet: team=${team}, emailParam=${emailParam}`);
-    console.log('all params:', JSON.stringify(params));
+    Logger.log(`doGet: team=${team}, emailParam=${emailParam}`);
+    Logger.log('all params:', JSON.stringify(params));
 
     // --- EARLY RETURN: teamLinks page (no team param) ---
     if (!team) {
-      console.log('Serving teamLinks only – skipping auth and team lookups.');
+      Logger.log('Serving teamLinks only – skipping auth and team lookups.');
       const teamLinks = getTeamLinks();
 
       const responseData = {
@@ -48,7 +48,7 @@ function doGet(e) {
     const authMode = e?.authMode || 'none';
     const effectiveEmail = emailParam || activeUserEmail || 'anonymous@public';
 
-    console.log({
+    Logger.log({
       authMode,
       activeUserEmail,
       emailParam,
@@ -59,7 +59,7 @@ function doGet(e) {
     const isTeamLead = checkGroupMembership(TEAM_LEADS_GROUP_EMAIL, effectiveEmail);
     const isTeamPageEditor = (isTeamLead && effectiveEmail.includes(team)) || isAdmin;
 
-    console.log(
+    Logger.log(
       'Email:',
       effectiveEmail,
       'isAdmin:',
@@ -78,12 +78,18 @@ function doGet(e) {
 
     let responseData;
     if (action === 'delete' && responseId) {
-      console.log('Attempting delete for responseId:', responseId);
+      Logger.log('Attempting delete for responseId:', responseId);
       const deleted = deleteFormResponse(responseId);
+      Logger.log(`Delete result for ${responseId}: ${deleted}`);
       const message = deleted
         ? 'Announcement deleted successfully.'
         : 'Failed to delete announcement.';
       responseData = { success: deleted, message };
+      responseData.debugLogs = [
+        `delete=${action === 'delete'}`,
+        `responseId=${responseId}`,
+        `effectiveEmail=${effectiveEmail}`,
+      ];
     } else {
       responseData = {
         success: true,
@@ -124,7 +130,7 @@ function doGet(e) {
     }
 
   } catch (err) {
-    console.error('doGet ERROR:', err);
+    Logger.log('doGet ERROR:', err);
     const stack = err.stack || '';
     let file = 'unknown';
     let line = null;

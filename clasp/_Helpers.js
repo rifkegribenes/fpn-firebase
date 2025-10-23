@@ -126,7 +126,7 @@ function checkGroupMembership(groupEmail, userEmail) {
     const member = AdminDirectory.Members.get(groupEmail, userEmail);
     return member && member.status === "ACTIVE";
   } catch (err) {
-    console.warn(`checkGroupMembership Directory API failed for ${userEmail}: ${err.message}`);
+    Logger.log(`checkGroupMembership Directory API failed for ${userEmail}: ${err.message}`);
     return false;
   }
 }
@@ -172,25 +172,25 @@ function getRecentAnnouncements(teamObj) {
       deleteURL: row[DELETE_URL_COL]
     };
   });
-  // console.log(recentAnnouncements);
+  // Logger.log(recentAnnouncements);
   return recentAnnouncements;
 }
 
 function renameFile(team, file, fileType, meetingDate) {
-  console.log('####################   renameFile');
+  Logger.log('####################   renameFile');
   
   // Only touch recently added files (e.g. last 60 seconds)
   const created = file.getDateCreated();
   const now = new Date();
   const ageInSeconds = (now - created) / 1000;
-  // console.log(`ageInSeconds: ${ageInSeconds}`);
+  // Logger.log(`ageInSeconds: ${ageInSeconds}`);
 
   const mtgDate = meetingDate ? formatDateFileName(new Date(meetingDate)) : null;
-  console.log(`mtgDate: ${mtgDate}`);
+  Logger.log(`mtgDate: ${mtgDate}`);
 
   if (ageInSeconds < 60) {
-    // console.log(`ageInSeconds < 60`);
-    console.log('renameFile');
+    // Logger.log(`ageInSeconds < 60`);
+    Logger.log('renameFile');
     const originalName = file.getName();
     let newName = '';
     if (mtgDate) {
@@ -198,39 +198,39 @@ function renameFile(team, file, fileType, meetingDate) {
     } else {
       newName = `${team}_${fileType}_${originalName}`;
     }
-    // console.log(`originalName: ${originalName}`);
-    // console.log(`newName: ${newName}`);
+    // Logger.log(`originalName: ${originalName}`);
+    // Logger.log(`newName: ${newName}`);
     file.setName(newName);
     file.setDescription(team);
-    // console.log(`file description: *********************`);
-    // console.log(file.getDescription());
-    // console.log(`mtgDate: ${mtgDate}`);
+    // Logger.log(`file description: *********************`);
+    // Logger.log(file.getDescription());
+    // Logger.log(`mtgDate: ${mtgDate}`);
     if (mtgDate) {
       let currentDesc = file.getDescription() || "";
       currentDesc = currentDesc += `,${mtgDate}`;
       file.setDescription(currentDesc);
-      console.log(`file description with mtgDate:`);
-      console.log(file.getDescription());
+      Logger.log(`file description with mtgDate:`);
+      Logger.log(file.getDescription());
     }
   } else {
-    console.log(`skipping older file ${ageInSeconds}`);
+    Logger.log(`skipping older file ${ageInSeconds}`);
   }
 }
 
 
 // prepends the team name to meeting minutes and ops plan files so they can be found later in the drive folder
 function onFormSubmitHandler2(e) {
-  console.log(`onFormSubmitHandler2`);
+  Logger.log(`onFormSubmitHandler2`);
   const sheetName = e.range.getSheet().getName();
-  console.log(`sheetName = ${sheetName}`);
+  Logger.log(`sheetName = ${sheetName}`);
 
   // e.source is the Form object that triggered the event
   const submittedFormId = e.source.getId();
-  console.log(`onFormSubmitHandler2 submittedFormId: ${submittedFormId}`);
-  console.log(`UPDATES_FORM_ID: ${UPDATES_FORM_ID}`);
+  Logger.log(`onFormSubmitHandler2 submittedFormId: ${submittedFormId}`);
+  Logger.log(`UPDATES_FORM_ID: ${UPDATES_FORM_ID}`);
 
   if (submittedFormId !== UPDATES_FORM_ID) {
-    console.log('Submission ignored: Not from team updates form.');
+    Logger.log('Submission ignored: Not from team updates form.');
     return;
   }
 
@@ -239,7 +239,7 @@ function onFormSubmitHandler2(e) {
   const team = responses["Your Team"][0] || 'Unknown'; 
   const fileType = responses["What do you want to update?"][0].includes('minutes') ? 'minutes' : responses["What do you want to update?"][0].includes('operations') ? 'ops' : '';
   const meetingDate = responses["Date of meeting"][0] || '';
-  console.log(`team: ${team}, fileType: ${fileType}`);
+  Logger.log(`team: ${team}, fileType: ${fileType}`);
 
   const minutesFolder = DriveApp.getFolderById(MINUTES_FOLDER_ID);
   const opsFolder = DriveApp.getFolderById(OPS_FOLDER_ID);
@@ -249,8 +249,8 @@ function onFormSubmitHandler2(e) {
   if (fileType === 'minutes') {
     while (minutesFiles.hasNext()) {
     const file = minutesFiles.next();
-    // console.log('minutesFile');
-    // console.log(file.getName());
+    // Logger.log('minutesFile');
+    // Logger.log(file.getName());
 
     renameFile(globalLookup(team).shortName, file, fileType, meetingDate)
   }
@@ -258,37 +258,37 @@ function onFormSubmitHandler2(e) {
   } else if (fileType === 'ops') {
     while (opsFiles.hasNext()) {
     const file = opsFiles.next();
-    // console.log('opsFile');
-    // console.log(file.getName());
+    // Logger.log('opsFile');
+    // Logger.log(file.getName());
 
     renameFile(globalLookup(team).shortName, file, fileType)
     
     }
   } else {
-    console.log('no fileType found'
+    Logger.log('no fileType found'
     )
   }
 }
 
 function getLatestMinutesFiles(teamObj, folderId, maxFiles) {
-  console.log(`getLatestMinutesFiles`);
+  Logger.log(`getLatestMinutesFiles`);
   const teamPrefix = `${teamObj.shortName}_minutes`;
-  console.log(`teamPrefix: ${teamPrefix}`);
+  Logger.log(`teamPrefix: ${teamPrefix}`);
   const response = Drive.Files.list({
     q: `'${folderId}' in parents and (mimeType='application/pdf' or mimeType='application/vnd.openxmlformats-officedocument.wordprocessingml.document' or mimeType='application/msword') and trashed=false and name contains '${teamPrefix}'`,
     orderBy: 'createdTime desc',
     maxResults: maxFiles,
     fields: 'files(id,name,createdTime,description)'
   });
-  console.log('##########################');
-  console.log(response);
+  Logger.log('##########################');
+  Logger.log(response);
   return response.files || response.items || [];
 }
 
 function getLatestOpsFile(teamObj, folderId) {
-  // console.log(`getLatestOpsFile`);
+  // Logger.log(`getLatestOpsFile`);
   const teamPrefix = `${teamObj.shortName}_ops`;
-  // console.log(`teamPrefix: ${teamPrefix}`);
+  // Logger.log(`teamPrefix: ${teamPrefix}`);
   const response = Drive.Files.list({
     q: `'${folderId}' in parents and (mimeType='application/pdf' or mimeType='application/vnd.openxmlformats-officedocument.wordprocessingml.document' or mimeType='application/msword') and trashed=false and name contains '${teamPrefix}'`,
     orderBy: 'createdTime desc',
@@ -298,7 +298,7 @@ function getLatestOpsFile(teamObj, folderId) {
 
   // Filter to the most recently created ops file
   const matchingFile = response.files.find(file => file.name.startsWith(teamPrefix));
-  // console.log(matchingFile);
+  // Logger.log(matchingFile);
   return matchingFile || null; // Return the matching file or null if none found
 }
 
@@ -404,12 +404,12 @@ function onFormSubmitHandler(e) {
    * 
    * */
 function globalLookup(team) {
-  console.log('globalLookup');
-  console.log(`team: ${team}`);
+  Logger.log('globalLookup');
+  Logger.log(`team: ${team}`);
 
   // if there's no team input, the function doesn't run
     if (!team) {
-      console.log('no team provided');
+      Logger.log('no team provided');
       return null;
     }
 
@@ -448,7 +448,7 @@ function globalLookup(team) {
   }
 
   // for (const [name, value] of Object.entries(indices)) {
-  //   console.log(`${name}: ${value}`);
+  //   Logger.log(`${name}: ${value}`);
   // }
 
   // loop through the rows in the location lookup sheet
@@ -456,7 +456,7 @@ function globalLookup(team) {
   // in EITHER the short name or team columns
   for (let r of tmRows ) {
     // check for team match
-    // console.log(String(r[tIdxL]).trim().toLowerCase(), team.trim().toLowerCase());
+    // Logger.log(String(r[tIdxL]).trim().toLowerCase(), team.trim().toLowerCase());
     if (String(r[tIdx]).trim().toLowerCase() === team.trim().toLowerCase() ||
       String(r[sIdx]).trim().toLowerCase() === team.trim().toLowerCase()  ) {
 
@@ -481,7 +481,7 @@ function globalLookup(team) {
         teamCal,
         teamDrive
       };
-      console.log(teamObj);
+      Logger.log(teamObj);
       return teamObj;
     }
   }
@@ -501,10 +501,10 @@ function globalLookup(team) {
    * 
    * */
 function teamLookup(neighborhood) {
-  console.log(`neighborhood: ${neighborhood}`);
+  Logger.log(`neighborhood: ${neighborhood}`);
     // if there's no neighborhood input, the function doesn't run
     if (!neighborhood) {
-      console.log('no neighborhood provided');
+      Logger.log('no neighborhood provided');
       return null;
     }   
       // find header and rows in neighborhood lookup sheet
@@ -542,7 +542,7 @@ function teamLookup(neighborhood) {
       if (tIdx === -1 || sIdxT === -1 || gIdx === -1 || tpIdx === -1 || cIdx === -1, tleIdx === -1, tlaIdx === -1) {
         throw new Error(`TeamLookup must have headers "Team, "Short name", "Team Group Email", "Team calendar link", "Team page", and "Team Lead email"`);
       }
-      console.log('246');
+      Logger.log('246');
       // declare the return object and leads array as empty variables
       const returnObj = {};
 
@@ -555,7 +555,7 @@ function teamLookup(neighborhood) {
         if (String(r[nIdx]).trim() === neighborhood) {
 
           // if we find a match on neighborhood, get the teamShortName to send to the next lookup function
-          console.log(`shortName: ${r[sIdxN]}`);
+          Logger.log(`shortName: ${r[sIdxN]}`);
           teamShortName = r[sIdxN]
         }
       });
@@ -565,9 +565,9 @@ function teamLookup(neighborhood) {
       // matches the short name in that row
 
       for (const r of tRows) {
-        // console.log(String(r[sIdxT]).trim().toLowerCase(), teamShortName.trim().toLowerCase());
+        // Logger.log(String(r[sIdxT]).trim().toLowerCase(), teamShortName.trim().toLowerCase());
         if (String(r[sIdxT]).trim().toLowerCase() === teamShortName.trim().toLowerCase()) {
-          // console.log('MATCH: 279');
+          // Logger.log('MATCH: 279');
         // gather the group email, team name, calendar link, and team page URL from that row
           const group = String(r[gIdx] || '').trim();
           const team = String(r[tIdx] || '').trim();
@@ -575,10 +575,10 @@ function teamLookup(neighborhood) {
           const teamCalendar = String(r[cIdx] || '').trim();
           // check if the 'team lead email assigned' column is filled
           // if so, return the teamLeadEmail; otherwise return null
-          // console.log(`is the ${team} team email assigned? ${!!r[tlaIdx]}`)
+          // Logger.log(`is the ${team} team email assigned? ${!!r[tlaIdx]}`)
           teamLeadEmail = !!r[tlaIdx] ?  String(r[tleIdx]) : null;
           const teamLeadName = teamLeadEmail ? String(r[tlaIdx] || '').trim() : null;
-          // console.log(`teamLeadEmail: ${teamLeadEmail}, teamLeadName: ${teamLeadName}`);
+          // Logger.log(`teamLeadEmail: ${teamLeadEmail}, teamLeadName: ${teamLeadName}`);
 
           // store those values in the return object
           returnObj.group = group;
@@ -588,11 +588,11 @@ function teamLookup(neighborhood) {
           returnObj.teamLeadEmail = teamLeadEmail;
           returnObj.teamLeadName = teamLeadName;
 
-          console.log(`############################### returnObj`);
-          console.log(returnObj);
+          Logger.log(`############################### returnObj`);
+          Logger.log(returnObj);
 
           if (!returnObj.teamLeadName) {
-            console.log(`no team lead found for ${returnObj.team}`);
+            Logger.log(`no team lead found for ${returnObj.team}`);
           }
 
           return returnObj;
@@ -600,13 +600,13 @@ function teamLookup(neighborhood) {
         }
 
       };
-      // console.log('304');
+      // Logger.log('304');
     } 
 
 
 function readSheet_(sheet) {
   if (!sheet) {
-    console.log(`no sheet provided to readSheet`);
+    Logger.log(`no sheet provided to readSheet`);
     return null;
   }
   try {
@@ -617,7 +617,7 @@ function readSheet_(sheet) {
     const rows = values.slice(1);
     return { headers, rows };
   } catch (err) {
-    console.log(`error in readSheet: ${err}`);
+    Logger.log(`error in readSheet: ${err}`);
   }
   
 }
@@ -661,7 +661,7 @@ function addToGroupIdempotent_(groupEmail, userEmail) {
 /** now idempotent: checks for matching email address in target sheet and updates existing if finds match */
 function copyRowToAnotherSheet(sourceSheet, targetSheet) {
 
-  console.log(`copyRowToAnotherSheet`);
+  Logger.log(`copyRowToAnotherSheet`);
   
   // Get the header row from the source sheet (assuming headers are in the first row)
   const sourceHeaders = sourceSheet.getRange(1, 1, 1, sourceSheet.getLastColumn()).getValues()[0];
@@ -684,7 +684,7 @@ function copyRowToAnotherSheet(sourceSheet, targetSheet) {
 
   // save the email from the source row to a variable
   const sourceEmail = sourceRowData[eIdxS];
-  console.log(`sourceEmail: ${sourceEmail}`);
+  Logger.log(`sourceEmail: ${sourceEmail}`);
 
   // Loop through the source headers and match with the target headers
   for (var i = 0; i < sourceHeaders.length; i++) {
@@ -708,19 +708,19 @@ function copyRowToAnotherSheet(sourceSheet, targetSheet) {
       // in each row, check to see if the email matches the email in the form submission
       for (const [rIdxT, r] of targetRows.entries() ) {
         if (String(r[eIdxT]).trim() === sourceEmail) {
-          console.log(`match found: row ${rIdxT + 2}, ${r[eIdxT]}`);
+          Logger.log(`match found: row ${rIdxT + 2}, ${r[eIdxT]}`);
           // if we find a match, UPDATE this row with values from the form submission instead of adding a new row
           // Set the target row data in the next available row in the target sheet
           // add two to index because array is zero-indexed and we exclude the header row
           targetSheet.getRange(rIdxT + 2, 1, 1, targetRowData.length).setValues([targetRowData]);
-          console.log('found match, aborting loop and returning');
+          Logger.log('found match, aborting loop and returning');
           match = true;
           break;
         }
       }
-  console.log(`match: ${match}`);
+  Logger.log(`match: ${match}`);
   if (!match) {
-    console.log('no match; adding new row');
+    Logger.log('no match; adding new row');
     // If no match, find the next empty row in the target sheet to paste the data
     const nextRow = targetSheet.getLastRow() + 1;
     
@@ -745,33 +745,33 @@ function testHasMember() {
 }
 
 function renderTemplate_(fileName, obj) {
-  console.log('renderTemplate');
-  console.log(`fileName: ${fileName}`);
+  Logger.log('renderTemplate');
+  Logger.log(`fileName: ${fileName}`);
   let t;
   try {
     t = HtmlService.createTemplateFromFile(fileName);
   } catch(err) {
-    console.log(`renderTemplate_ 454: ${err}`);
+    Logger.log(`renderTemplate_ 454: ${err}`);
   }
   try {
     Object.assign(t, obj);
   } catch(err) {
-    console.log(`renderTemplate_ 459: ${err}`);
+    Logger.log(`renderTemplate_ 459: ${err}`);
   }
   let html;
   try {
     html = t.evaluate().getContent(); // full HTML string
   } catch(err) {
-    console.log(`renderTemplate_ 464: ${err}`)
+    Logger.log(`renderTemplate_ 464: ${err}`)
   }
   return html
 }
 
 function deleteFormResponse(responseId) {
-  console.log('deleteFormResponse');
+  Logger.log('deleteFormResponse');
   try {
     const form = FormApp.openById('1SE1N04H87kckCEZdiF56Nq9U5IoH5oSxUMGevqK7LFk');
-    console.log(`form: ${form}`);
+    Logger.log(`form: ${form}`);
     form.deleteResponse(responseId); // Delete the actual form response
 
     // Open the sheet and get data
@@ -792,7 +792,7 @@ function deleteFormResponse(responseId) {
     for (let i = 1; i < data.length; i++) {
       if (data[i][idColIndex] === responseId) {
         sheet.deleteRow(i + 1); // +1 to skip header
-        console.log(`deleted row ${i +1}`);
+        Logger.log(`deleted row ${i +1}`);
         break;
       }
     }
