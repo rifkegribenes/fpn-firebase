@@ -81,15 +81,22 @@ function doGet(e) {
       Logger.log('Attempting delete for responseId:', responseId);
       const deleted = deleteFormResponse(responseId);
       Logger.log(`Delete result for ${responseId}: ${deleted}`);
+
       const message = deleted
-        ? 'Announcement deleted successfully.'
-        : 'Failed to delete announcement.';
-      responseData = { success: deleted, message };
-      responseData.debugLogs = [
-        `delete=${action === 'delete'}`,
-        `responseId=${responseId}`,
-        `effectiveEmail=${effectiveEmail}`,
-      ];
+        ? '✅ Announcement deleted successfully.'
+        : '❌ Failed to delete announcement.';
+
+      const html = `
+        <html>
+          <head><title>Delete Result</title></head>
+          <body style="font-family: Lato, sans-serif; padding: 20px;">
+            <h2>${message}</h2>
+            <p>You can now close this tab and refresh the team page.</p>
+          </body>
+        </html>
+      `;
+
+      return HtmlService.createHtmlOutput(html);
     } else {
       responseData = {
         success: true,

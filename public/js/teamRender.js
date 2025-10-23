@@ -608,7 +608,7 @@ export async function renderTeamPage(data) {
           <div class="announcement-admin links">
             <a href="${a.editURL}" class="edit-link">Edit</a>
             &nbsp;|&nbsp;
-            <a href="${deleteURLWithParams}" class="delete-link">Delete</a>
+            <a href="${deleteURLWithParams}" target="_blank" class="delete-link">Delete</a>
           </div>
         `;
       }
@@ -745,7 +745,7 @@ export async function renderTeamPage(data) {
     updateContainer.appendChild(updateLink);
   }  
 
-  attachDeleteHandlers();
+  // attachDeleteHandlers();
 
 }
 
