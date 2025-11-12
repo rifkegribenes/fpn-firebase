@@ -62428,90 +62428,48 @@ sentinel {
     padding: 7px;
 }
 
-/* Full-screen fixed search bar */
-#search-bar {
-  display: none;             /* hidden by default */
-  position: fixed;
+
+/* mobile nav */
+#yuynLe {
+  position: fixed;    
   top: 0;
-  left: 0;
-  width: 100%;
-  height: 60px;
-  background: white;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  transition: transform 0.3s ease, opacity 0.3s ease;
-  transform: translateY(-100%);
-  opacity: 0;
+  left: 0;            
+  width: 100vw;       
+  height: 100vh;   
+  padding: 20px;   
+  padding-top: 56px;
+  background-color: #073763; 
+  overflow-y: auto;   
+  z-index: 9999;      
+  display: none;      
 }
 
-/* Show animation */
-#search-bar.active {
-  transform: translateY(0);
-  opacity: 1;
+
+#yuynLe .IKA38e {
+  opacity: 1 !important;    
+  transform: none !important; 
 }
 
-/* Input styling */
-#search-input {
-  flex: 1;
-  height: 40px;
-  font-size: 16px;
-  padding: 0 12px;
-  border: none;
-  outline: none;
-  background: #f1f1f1;
-  border-radius: 4px;
+/* Make icons visible */
+#yuynLe svg {
+  fill: white !important;
+  stroke: white !important;
 }
 
-/* Clear button */
-#search-button {
-  display: none;
-  margin-left: 10px;
-  cursor: pointer;
-  font-size: 20px;
-  line-height: 1;
+/* mobile nav links */
+
+#yuynLe li {
+    margin-top: 12px;
+    padding-left: 36px;
 }
 
-/* Show clear button when typing */
-#search-input:not(:placeholder-shown) + #search-button {
-  display: block;
+.I35ICb {
+    color: white;
+    
 }
 
-.search-container {
-  display: flex;
-  align-items: center;
-  position: relative; /* allows search bar dropdown inside */
-}
-
-/* Search icon (to open the bar) */
-#search-icon {
-  display: flex;
-  align-items: center;
-  z-index: 1100;
-  padding: 0 10px;
-}
-#search-icon svg {
-  width: 24px;
-  height: 24px;
-  fill: rgb(28, 28, 28);
-}
-
-.nav-bar {
-  display: flex;
-  align-items: right;
-  justify-content: flex-end; 
-  padding: 10px 16px;
-  height: 60px;
-}
-
-.nav-menu {
-  display: flex;
-  gap: 10px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
+#yuynLe [jsname="ix0Hvc"].open svg {
+  transform: rotate(180deg);
+  transition: transform 0.3s;
 }
 

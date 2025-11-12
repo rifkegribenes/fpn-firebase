@@ -14,6 +14,23 @@ function logSheetIds() {
   });
 }
 
+function logToSheet(entry) {
+  try {
+    const sheet = SpreadsheetApp.openById('1A5wqQoAZhgk6QLFB4_8stVZUMP7iHdTrQikEa4ur4go').getSheetByName('ServerLogs');
+    sheet.appendRow([
+      new Date(),
+      entry.level || "",
+      entry.where || "",
+      entry.groupEmail || "",
+      entry.userEmail || "",
+      entry.message || "",
+      entry.stack || ""
+    ]);
+  } catch (err) {
+    Logger.log(`logToSheet() failed: ${err.message}`);
+  }
+}
+
 function toSpinalCase(str) {
   return str
     .replace(/([a-z])([A-Z])/g, '$1 $2')      // Add space between camelCase
@@ -110,26 +127,44 @@ const TEAM_LEADS_EMAILS = [
   "tl.woodstock@friendsofportlandnet.org"
 ];
 
+const membershipCache = {};
+
 function checkGroupMembership(groupEmail, userEmail) {
-  if (!userEmail) return false;
+  const key = `${groupEmail}:${userEmail}`;
+  if (membershipCache.hasOwnProperty(key)) return membershipCache[key];
 
-  // Fallback: direct match first (avoids Directory API call)
-  if (groupEmail === ADMIN_GROUP_EMAIL && ADMIN_EMAILS.includes(userEmail)) {
-    return true;
-  }
-  if (groupEmail === TEAM_LEADS_GROUP_EMAIL && TEAM_LEADS_EMAILS.includes(userEmail)) {
-    return true;
+  let result = false;
+  if (groupEmail === ADMIN_GROUP_EMAIL) {
+    result = ADMIN_EMAILS.includes(userEmail);
+  } else if (groupEmail === TEAM_LEADS_GROUP_EMAIL) {
+    result = TEAM_LEADS_EMAILS.includes(userEmail);
+  } else {
+    try {
+      const member = AdminDirectory.Members.get(groupEmail, userEmail);
+      result = member && member.status === "ACTIVE";
+    } catch (err) {
+      const msg = err.message || "";
+      if (
+        msg.includes("Resource Not Found") ||
+        msg.includes("memberKey") ||
+        msg.includes("not a member") ||
+        msg.includes("Invalid Input")
+      ) {
+        logToSheet({level: "warn", where:"checkGroupMembership", groupEmail, userEmail, message: `Not a member (handled gracefully): ${msg}`});
+        result = false;
+      } else {
+        logToSheet({level: "error", where:"checkGroupMembership", groupEmail, userEmail, message: `API error: ${msg}`, stack: err.stack});
+        result = false;
+      }
+    }
   }
 
-  // Try Directory API (if authorized)
-  try {
-    const member = AdminDirectory.Members.get(groupEmail, userEmail);
-    return member && member.status === "ACTIVE";
-  } catch (err) {
-    Logger.log(`checkGroupMembership Directory API failed for ${userEmail}: ${err.message}`);
-    return false;
-  }
+  membershipCache[key] = result;
+  return result;
 }
+
+
+
 
 
 function getRecentAnnouncements(teamObj) {

@@ -31,7 +31,7 @@ export async function callBackend(params = {}) {
       method: 'GET',
       redirect: 'follow',
       headers: shouldBypassCache ? { 'Cache-Control': 'no-cache' } : {}
-    });
+    }).then(data => console.log('Server debug info:', data.debug));
 
     const text = await res.text();
     let data;

@@ -1,6 +1,7 @@
 // gsite front end js for header
 
 window.addEventListener('scroll', function() {
+		if (window.innerWidth < 768) return;
     const navbarLinks = document.querySelectorAll('.YSH9J');
     const nav = document.getElementById('navBkgrd')
     const searchIconPaths = document.querySelectorAll('#search-icon svg path:not([fill="none"])');
@@ -44,56 +45,41 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
- const searchIcon = document.getElementById("search-icon");
-const searchBar = document.getElementById("search-bar");
-const searchInput = document.getElementById("search-input");
-const searchButton = document.getElementById("search-button");
 
-// Open search bar
-searchIcon.addEventListener("click", () => {
-  searchBar.classList.add("active");
-  searchIcon.style.display = 'none';
-  searchInput.focus();
-});
 
-// Clear input
-searchButton.addEventListener("click", () => {
-  searchInput.value = "";
-  searchInput.focus();
-  searchButton.style.display = "none";
-});
+  const hamburger = document.getElementById('s9iPrd');
+	const mobileNav = document.getElementById('yuynLe');
 
-// Hide clear button if input is empty
-searchInput.addEventListener("input", () => {
-  searchButton.style.display = searchInput.value.length > 0 ? "block" : "none";
-});
+	hamburger.addEventListener('click', () => {
+	  if (!mobileNav) return;
 
-// Trigger search on Enter
-searchInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    const query = searchInput.value.trim();
-    if (query) {
-      const searchUrl = `https://www.google.com/search?q=site:https://sites.google.com/friendsofportlandnet.org/teamspace/home+${encodeURIComponent(query)}`;
-      window.open(searchUrl, "_blank"); // opens in a new tab
+	  const isOpen = mobileNav.style.display === 'block';
+
+		if (!isOpen) {
+		  mobileNav.style.display = 'block';
+		  hamburger.innerHTML = '&#10005;'; // simple "X"
+		} else {
+		  mobileNav.style.display = 'none';
+		  hamburger.innerHTML = '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M3 6h18M3 12h18M3 18h18" stroke="white" stroke-width="2"/></svg>'; // hamburger
+		}
+			  
+	});
+
+	// Mobile submenu expand/collapse
+document.querySelectorAll('#yuynLe [jsname="ix0Hvc"]').forEach(caret => {
+  caret.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const parent = caret.closest('li');
+    const submenu = parent.querySelector('.oGuwee');
+
+    if (submenu) {
+      const isOpen = submenu.style.display === 'block';
+      submenu.style.display = isOpen ? 'none' : 'block';
+      caret.classList.toggle('open', !isOpen);
     }
-  }
-  if (e.key === "Escape") {
-    closeSearchBar();
-  }
+  });
 });
 
-// Click-away listener
-document.addEventListener("click", (e) => {
-  if (!searchBar.contains(e.target) && !searchIcon.contains(e.target)) {
-    closeSearchBar();
-  }
-});
-
-// Close search bar function
-function closeSearchBar() {
-  searchBar.classList.remove("active");
-  searchInput.value = "";
-  searchButton.style.display = "none";
-  searchIcon.style.display = 'flex';
-}
 });
