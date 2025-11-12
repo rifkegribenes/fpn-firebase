@@ -22,7 +22,7 @@ body {
 }
 
 h1, h2, h3, h4, a {
-  color: rgba(34, 110, 147, 1);
+  color: rgba(7, 55, 99, 1);
 }
 
 a {
@@ -31,7 +31,7 @@ a {
 }
 
 a:hover {
-  color: rgba(34, 110, 147, 0.8);
+  color: rgba(7, 55, 99, 0.8);
   text-decoration: underline;
 }
 
@@ -48,6 +48,10 @@ img {
   padding: 0 20px;         
   width: 100%;
   box-sizing: border-box;
+}
+
+#teamContent, #linksContent {
+  margin-top: 60px;
 }
 
 /* ===== LOGO ===== */
@@ -96,7 +100,7 @@ img {
 }
 
 .sidebar-header {
-  background: rgb(34, 110, 147);
+  background: rgb(7, 55, 99);
   color: white;
   padding: 8px 10px;
   font-size: 14px;
@@ -117,7 +121,7 @@ img {
 .sidebar-section h4 {
   margin: 0 0 6px;
   font-size: 14px;
-  color: rgba(34, 110, 147, 1);
+  color: rgba(7, 55, 99, 1);
   font-weight: 600;
 }
 
@@ -131,13 +135,13 @@ img {
 }
 
 .sidebar-section a {
-  color: rgba(34, 110, 147, 1);
+  color: rgba(7, 55, 99, 1);
   font-weight: 500;
 }
 
 .sidebar-section a:hover {
   text-decoration: underline;
-  color: rgb(48, 132, 172);
+  color: rgba(7, 55, 99, 0.8);
 }
 
 }
@@ -155,7 +159,7 @@ p {
 
 .blockhead {
   font-size: 1.1rem;
-  background-color: rgb(34, 110, 147);
+  background-color: rgba(7, 55, 99, 1);
   color: white;
   padding: 6px 10px;
   font-weight: 600;
@@ -179,7 +183,7 @@ p {
 }
 
 .quickLinks .qlHed {
-  background-color: rgb(34, 110, 147);
+  background-color: rgba(7, 55, 99, 1);
   color: #fff;
   font-weight: 600;
   padding: 6px 10px;
@@ -194,7 +198,7 @@ p {
 }
 
 .quickLinks .qlP a {
-  color: rgb(34, 110, 147);
+  color: rgba(7, 55, 99, 1);
   text-decoration: none;
   font-size: 14px;
   line-height: 1.4;
@@ -239,7 +243,7 @@ p {
 .announcement-item h4 {
   font-size: 1rem;
   margin: 0 0 4px 0;
-  color: rgba(34, 110, 147, 1);
+  color: rgba(7, 55, 99, 1);
 }
 
 .announcement-item .date {
@@ -261,7 +265,7 @@ p {
 .announcement-item .links a {
   font-size: 0.8rem;
   font-weight: normal;
-  color: rgba(34, 110, 147, 1);
+  color: rgba(7, 55, 99, 1);
   margin-right: 8px;
   text-decoration: none;
 }
@@ -272,7 +276,7 @@ p {
 
 /* ===== CALENDAR ===== */
 .calendar .blockhead {
-  background-color: rgb(34, 110, 147);
+  background-color: rgba(7, 55, 99, 1);
   color: #fff;
   padding: 6px 10px;
   font-size: 1.1rem;
@@ -327,7 +331,7 @@ p {
 
 #adminButtons button,
 #adminButtons .responsiveLink {
-  background: rgb(34, 110, 147);
+  background: rgba(7, 55, 99, 1);
   color: white;
   border: none;
   cursor: pointer;
@@ -351,7 +355,7 @@ p {
 
 #adminButtons button:hover,
 #adminButtons .responsiveLink:hover {
-  background: rgb(48, 132, 172);
+  background: rgba(7, 55, 99, 1);
 }
 
 #adminButtons button:disabled {

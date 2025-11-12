@@ -582,6 +582,7 @@ export async function renderTeamPage(data) {
   refreshBtn.style.display = data.isTeamPageEditor ? 'inline-block' : 'none';
 
   const team = data.teamObj || {};
+  const urlParams = new URLSearchParams(window.location.search);
   const teamName = data.teamObj?.teamName || urlParams.get('team');
 
   title.innerText = team.teamName
