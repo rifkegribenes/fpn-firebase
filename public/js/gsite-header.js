@@ -52,6 +52,7 @@ const searchButton = document.getElementById("search-button");
 // Open search bar
 searchIcon.addEventListener("click", () => {
   searchBar.classList.add("active");
+  searchIcon.style.display = 'none';
   searchInput.focus();
 });
 
@@ -70,8 +71,11 @@ searchInput.addEventListener("input", () => {
 // Trigger search on Enter
 searchInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
-    console.log("Search for:", searchInput.value);
-    // trigger search here
+    const query = searchInput.value.trim();
+    if (query) {
+      const searchUrl = `https://www.google.com/search?q=site:https://sites.google.com/friendsofportlandnet.org/teamspace/home+${encodeURIComponent(query)}`;
+      window.open(searchUrl, "_blank"); // opens in a new tab
+    }
   }
   if (e.key === "Escape") {
     closeSearchBar();
@@ -90,5 +94,6 @@ function closeSearchBar() {
   searchBar.classList.remove("active");
   searchInput.value = "";
   searchButton.style.display = "none";
+  searchIcon.style.display = 'flex';
 }
 });
