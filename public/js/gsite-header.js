@@ -1,85 +1,158 @@
 // gsite front end js for header
 
 window.addEventListener('scroll', function() {
-		if (window.innerWidth < 768) return;
-    const navbarLinks = document.querySelectorAll('.YSH9J');
-    const nav = document.getElementById('navBkgrd')
-    const searchIconPaths = document.querySelectorAll('#search-icon svg path:not([fill="none"])');
-    
-    // Check scroll position
-    if (window.scrollY > 20) {
-    	console.log('window.scrollY', window.scrollY);
-      navbarLinks.forEach(el => {
-        el.style.color = 'white';
-      });
-			searchIconPaths.forEach(path => path.setAttribute('fill', 'white'));
-			nav.style.backgroundColor = 'rgba(7, 55, 99, 1)';
-      console.log('nav.style.backgroundColor', nav.style.backgroundColor);
-    } else {
-      navbarLinks.forEach(el => {
-        el.style.color = 'rgb(28, 28, 28)';
-      });
-      searchIconPaths.forEach(path => path.setAttribute('fill', 'rgb(28, 28, 28)'));
-      nav.style.backgroundColor = 'inherit';
-    }
-  });
+  if (window.innerWidth < 768) return; // Skip mobile
+  const navbarLinks = document.querySelectorAll('.YSH9J');
+  const nav = document.getElementById('navBkgrd')
+  const searchIconPaths = document.querySelectorAll('#search-icon svg path:not([fill="none"])');
+
+  if (window.scrollY > 20) {
+    navbarLinks.forEach(el => el.style.color = 'white');
+    searchIconPaths.forEach(path => path.setAttribute('fill', 'white'));
+    nav.style.backgroundColor = 'rgba(7, 55, 99, 1)';
+  } else {
+    navbarLinks.forEach(el => el.style.color = 'rgb(28, 28, 28)');
+    searchIconPaths.forEach(path => path.setAttribute('fill', 'rgb(28, 28, 28)'));
+    nav.style.backgroundColor = 'inherit';
+  }
+});
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Select all menu items that contain a submenu
-  const dropdowns = document.querySelectorAll('li[data-nav-level="1"]');
 
-  dropdowns.forEach(item => {
-    const submenu = item.querySelector('.oGuwee');
-    if (!submenu) return;
+	if ('scrollRestoration' in history) {
+	    history.scrollRestoration = 'manual';
+	}
 
-    // Show on hover
-    item.addEventListener('mouseenter', () => {
-      submenu.style.display = 'block';
-      submenu.style.backgroundColor = 'rgba(7, 55, 99, 1)';
-      submenu.style.color = 'white';
+  window.scrollTo(0, 0);
+
+  const hamburger = document.getElementById('s9iPrd');         //  hamburger
+  const mobileNav = document.getElementById('yuynLe');        // mobile nav container
+  const closeBtn = document.getElementById('mobileMenuClose'); // close X in markup
+  const body = document.body;
+
+  const isMobile = () => window.matchMedia('(max-width: 767px)').matches;
+  console.log(`isMobile: ${isMobile()}`);
+
+  // Ensure menu has a predictable initial inline state
+  if (mobileNav) {
+    mobileNav.style.display = 'none';
+    mobileNav.setAttribute('aria-hidden', 'true');
+    mobileNav.style.pointerEvents = 'auto';
+  }
+
+  function openMenu() {
+    if (!mobileNav || !hamburger) return;
+    mobileNav.style.display = 'block';
+    mobileNav.setAttribute('aria-hidden', 'false');
+    body.classList.add('menu-open');
+    hamburger.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeMenu() {
+    if (!mobileNav || !hamburger) return;
+    mobileNav.style.display = 'none';
+    mobileNav.setAttribute('aria-hidden', 'true');
+    body.classList.remove('menu-open');
+    hamburger.setAttribute('aria-expanded', 'false');
+    // also close any open submenus
+    mobileNav.querySelectorAll('ul.VcS63b').forEach(ul => ul.style.display = 'none');
+    mobileNav.querySelectorAll('[jsname="ix0Hvc"].open').forEach(c => c.classList.remove('open'));
+  }
+
+  // Hook the real hamburger element
+  if (hamburger) {
+    // Make sure it is clickable even if Google Sites has native handlers
+    hamburger.addEventListener('click', (e) => {
+      e.preventDefault();
+      // toggle
+      const isOpen = mobileNav && mobileNav.style.display === 'block';
+      if (isOpen) closeMenu(); else openMenu();
     });
+  } else {
+    console.warn('Hamburger (#s9iPrd) not found.');
+  }
 
-    // Hide on mouse leave
-    item.addEventListener('mouseleave', () => {
-      submenu.style.display = 'none';
+  // Hook the close button (the big X)
+  if (closeBtn) {
+    closeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      closeMenu();
+    });
+  }
+
+  // Desktop hover behavior: expand submenu on hover only when not mobile
+  const topLevelLis = document.querySelectorAll('li[data-nav-level="1"]');
+  topLevelLis.forEach(li => {
+    const submenuUl = li.querySelector('ul.VcS63b');
+    if (!submenuUl) return;
+
+    // Mouse enter/leave only on desktop widths
+    if (!isMobile()) {
+    	li.addEventListener('mouseenter', () => {
+	       submenuUl.style.display = 'block';
+	    });
+    	li.addEventListener('mouseleave', () => {
+	      if (!isMobile()) submenuUl.style.display = 'none';
+	    });
+    } else {
+    	li.removeEventListener('mouseenter', () => {
+	       submenuUl.style.display = 'block';
+	    });
+    	li.removeEventListener('mouseleave', () => {
+	      if (!isMobile()) submenuUl.style.display = 'none';
+	    });
+    }
+    
+    
+  	});
+
+  // Caret click for mobile: find the caret, target the UL.VcS63b inside same LI
+  const carets = document.querySelectorAll('#yuynLe [jsname="ix0Hvc"], #mainNavWide [jsname="ix0Hvc"]');
+  carets.forEach(caret => {
+    caret.addEventListener('click', (e) => {
+    	console.log('caret click');
+      // Only respond on mobile (so caret still can be a normal link on desktop)
+      if (!isMobile()) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const li = caret.closest('li');
+      if (!li) return;
+      console.log(li);;
+      // the actual visible list is the UL with class VcS63b
+      const submenuUl = li.querySelector('ul.VcS63b');
+      const submenuContainer = li.querySelector('.oGuwee');
+      console.log(submenuUl);
+      if (!submenuUl) return;
+
+      const isOpen = submenuUl.style.display === 'block';
+      submenuUl.style.display = isOpen ? 'none' : 'block';
+      submenuContainer.style.display = isOpen ? 'none' : 'block';
+      caret.classList.toggle('open', !isOpen);
     });
   });
 
+  // When resizing
+  window.addEventListener('resize', () => {
+    if (!isMobile()) {
+      // On desktop: reset inline styles so CSS hover works
+      document.querySelectorAll('ul.VcS63b').forEach(ul => {
+        ul.style.display = '';
+      });
+      if (hamburger) hamburger.setAttribute('aria-expanded', 'false');
+      if (mobileNav) mobileNav.setAttribute('aria-hidden', 'false'); // not strictly needed
+      body.classList.remove('menu-open');
+    } else {
+      // On mobile: close menu and submenus by default
+      closeMenu();
+    }
+  });
 
-
-  const hamburger = document.getElementById('s9iPrd');
-	const mobileNav = document.getElementById('yuynLe');
-
-	hamburger.addEventListener('click', () => {
-	  if (!mobileNav) return;
-
-	  const isOpen = mobileNav.style.display === 'block';
-
-		if (!isOpen) {
-		  mobileNav.style.display = 'block';
-		  hamburger.innerHTML = '&#10005;'; // simple "X"
-		} else {
-		  mobileNav.style.display = 'none';
-		  hamburger.innerHTML = '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M3 6h18M3 12h18M3 18h18" stroke="white" stroke-width="2"/></svg>'; // hamburger
-		}
-			  
-	});
-
-	// Mobile submenu expand/collapse
-document.querySelectorAll('#yuynLe [jsname="ix0Hvc"]').forEach(caret => {
-  caret.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const parent = caret.closest('li');
-    const submenu = parent.querySelector('.oGuwee');
-
-    if (submenu) {
-      const isOpen = submenu.style.display === 'block';
-      submenu.style.display = isOpen ? 'none' : 'block';
-      caret.classList.toggle('open', !isOpen);
+  // Accessibility: close menu on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeMenu();
     }
   });
 });
 
-});

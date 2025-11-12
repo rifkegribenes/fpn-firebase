@@ -62419,57 +62419,125 @@ sentinel {
 }
 
 /* navbar links */
-#mainNavWide > li > div > div > a, .I35ICb>a  {
-    font-family: Arial;
-    font-size: 17.3333px !important;
+#mainNavWide > li > div > div > a,
+.I35ICb > a {
+  font-family: Arial;
+  font-size: 17.3333px !important;
 }
 
-.oGuwee > ul > li {
+@media only screen and (min-width: 768px) {
+  .oGuwee > ul > li {
     padding: 7px;
+  }
 }
 
+/* ---------- MOBILE STYLES ---------- */
+@media only screen and (max-width: 767px) {
 
-/* mobile nav */
-#yuynLe {
-  position: fixed;    
-  top: 0;
-  left: 0;            
-  width: 100vw;       
-  height: 100vh;   
-  padding: 20px;   
-  padding-top: 56px;
-  background-color: #073763; 
-  overflow-y: auto;   
-  z-index: 9999;      
-  display: none;      
-}
+  /* Hamburger default color */
+  #s9iPrd svg path {
+    stroke: rgb(28, 28, 28);
+    transition: stroke 0.3s;
+  }
 
+  /* Mobile menu open */
+  body.menu-open #s9iPrd svg path {
+    stroke: white;
+  }
 
-#yuynLe .IKA38e {
-  opacity: 1 !important;    
-  transform: none !important; 
-}
+  /* Base hidden menu state */
+  #yuynLe {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
+    height: 100vh;
+    padding: 20px;
+    padding-top: 56px;
+    background-color: #073763;
+    overflow-y: auto;
+    z-index: 9999;
+    display: none;
+    transform: translateX(-100%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 240ms ease, opacity 240ms ease;
+    transform-origin: left top;
+  }
 
-/* Make icons visible */
-#yuynLe svg {
-  fill: white !important;
-  stroke: white !important;
-}
+  /* When menu is open (visible) */
+  body.menu-open #yuynLe {
+    display: block !important;
+    transform: translateX(0) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    z-index: 2147483647 !important; /* always on top */
+  }
 
-/* mobile nav links */
-
-#yuynLe li {
+  /* Overlay link styles when open */
+  body.menu-open #yuynLe .IKA38e {
+    opacity: 1 !important;
+    transform: none !important;
+    color: white !important;
     margin-top: 12px;
+    padding-left: 48px;
+  }
+
+  body.menu-open #yuynLe .I35ICb {
+    color: white !important;
+  }
+
+  body.menu-open .JzO0Vc .IKA38e.r8s4j-R6PoUb {
     padding-left: 36px;
-}
+  }
 
-.I35ICb {
+  /* Close button */
+  #menuCloseContainer {
+    position: absolute;
+    height: 32px;
+    left: 16px;
+    top: 8px;
+    width: 32px;
+  }
+
+  #mobileMenuClose {
+    font-size: 28px;
     color: white;
-    
+    cursor: pointer;
+    z-index: 10000;
+  }
+
+  /* Submenu carets */
+  #yuynLe svg {
+    fill: white !important;
+    stroke: white !important;
+  }
+
+  /* Disable hover expansion on mobile */
+/*  li[data-nav-level="1"]:hover > .oGuwee {
+    display: none !important;
+  }*/
+
+  /* Ensure submenu lists (.VcS63b) appear inside open parent */
+  body.menu-open #yuynLe ul.VcS63b {
+    background: none;
+    color: white;
+    padding-left: 16px;
+  }
+
+  /* Caret rotation and submenu display */
+  #yuynLe [jsname="ix0Hvc"].open svg {
+      transform: rotate(180deg);
+      transition: transform 0.3s;
+  }
+
+  /* Ensure submenu ul shows when parent .oGuwee is open */
+  #yuynLe .oGuwee[style*="display: block"] > ul.VcS63b {
+      display: block !important;
+  }
+
 }
 
-#yuynLe [jsname="ix0Hvc"].open svg {
-  transform: rotate(180deg);
-  transition: transform 0.3s;
-}
+
+
 

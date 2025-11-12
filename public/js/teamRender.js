@@ -724,7 +724,7 @@ export async function renderTeamPage(data) {
   }
 
   groupDiv.innerHTML = team.groupEmail
-    ? `<ul><li><a href=https://groups.google.com/a/friendsofportlandnet.org/g/${team.shortName}}>${team.teamName} Google Group</a></li></ul>`
+    ? `<ul><li><a href="https://groups.google.com/a/friendsofportlandnet.org/g/${team.shortName}" target="_blank">${team.teamName} Google Group</a></li></ul>`
     : `<p>No Google group found for ${team.teamName}.</p>`;
 
   driveDiv.innerHTML = team.teamDrive

@@ -9,7 +9,6 @@ import { config } from './config.js';
 export async function callBackend(params = {}) {
   const { team = '', email = '', action = '', id = '', cache = true } = params;
 
-  // Build query parameters dynamically
   const query = new URLSearchParams({
     ...(team ? { team } : {}),
     ...(email ? { email } : {}),
@@ -20,22 +19,25 @@ export async function callBackend(params = {}) {
   const url = `${config.backendUrl}?${query.toString()}`;
   console.log(`callBackend(): ${url}`);
 
-  // Determine if cache should be bypassed
   const shouldBypassCache =
     !cache ||
     (action && action !== 'get') ||
     url.includes('action=delete');
 
   try {
+    // Fetch response
     const res = await fetch(url, {
       method: 'GET',
       redirect: 'follow',
       headers: shouldBypassCache ? { 'Cache-Control': 'no-cache' } : {}
-    }).then(data => console.log('Server debug info:', data.debug));
+    });
+
+    // Debug log for raw Response object
+    console.log('Server raw Response:', res);
 
     const text = await res.text();
-    let data;
 
+    let data;
     try {
       data = JSON.parse(text);
     } catch (err) {
@@ -54,3 +56,4 @@ export async function callBackend(params = {}) {
     return { success: false, error: err.message };
   }
 }
+
