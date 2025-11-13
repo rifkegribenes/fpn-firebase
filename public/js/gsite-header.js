@@ -107,12 +107,44 @@ document.addEventListener('DOMContentLoaded', () => {
   	});
 
   // Caret click for mobile: find the caret, target the UL.VcS63b inside same LI
-  const carets = document.querySelectorAll('#yuynLe [jsname="ix0Hvc"], #mainNavWide [jsname="ix0Hvc"]');
+  const carets = document.querySelectorAll('#yuynLe [jsname="ix0Hvc"], #mainNavWide [jsname="ix0Hvc"], .dvmRw');
+
+  const openCaret = (li) => {
+  	console.log('openCaret');
+  	// the actual visible list is the UL with class VcS63b
+    const submenuUl = li.querySelector('ul.VcS63b');
+    const submenuContainer = li.querySelector('.oGuwee');
+    if (!submenuUl) return;
+    console.log('118')
+    submenuUl.style.display = 'block';
+    submenuContainer.style.display = 'block';
+    console.log('121');
+    if (!isMobile()) {
+    	console.log(`*********************************** !isMobile, setting colors`);
+    	const mobileMenuBkg = document.querySelector('.oGuwee.eWDljc.RPRy1e.Mkt3Tc');
+    	mobileMenuBkg.style.backgroundColor = 'rgba(7, 55, 99, 1)';
+    	mobileMenuBkg.style.color = 'white';
+    }
+  }
+
+  const closeCaret = (li) => {
+  	console.log('closeCaret');
+  	// the actual visible list is the UL with class VcS63b
+    const submenuUl = li.querySelector('ul.VcS63b');
+    const submenuContainer = li.querySelector('.oGuwee');
+    if (!submenuUl) return;
+    submenuUl.style.display = 'none';
+    submenuContainer.style.display = 'none';
+    if (!isMobile) {
+    	console.log(`!isMobile, setting colors`);
+    	document.querySelector('.RPRy1e').style.backgroundColor = 'transparent';
+    	document.querySelector('.RPRy1e.I35ICb > a').style.color = 'transparent';
+    }
+  }
+
   carets.forEach(caret => {
     caret.addEventListener('click', (e) => {
     	console.log('caret click');
-      // Only respond on mobile (so caret still can be a normal link on desktop)
-      if (!isMobile()) return;
       e.preventDefault();
       e.stopPropagation();
 
@@ -125,9 +157,13 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log(submenuUl);
       if (!submenuUl) return;
 
-      const isOpen = submenuUl.style.display === 'block';
-      submenuUl.style.display = isOpen ? 'none' : 'block';
-      submenuContainer.style.display = isOpen ? 'none' : 'block';
+      const isOpen = submenuContainer.style.display === 'block';
+      console.log(`isOpen: ${isOpen}`);
+      if (!isOpen) {
+      	openCaret(li);
+      } else {
+      	closeCaret(li);
+      }
       caret.classList.toggle('open', !isOpen);
     });
   });
