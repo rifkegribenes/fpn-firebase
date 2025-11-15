@@ -1,6 +1,19 @@
 function doGet(e) {
-  Logger.log('--- doGet called ---');
-  Logger.log('Raw e object:', JSON.stringify(e));
+  // Helper to safely log to sheet without crashing
+  function safeLog(level, message, extra = {}) {
+    try {
+      logToSheet({
+        level,
+        where: 'doGet',
+        message,
+        ...extra
+      });
+    } catch (err) {
+      // swallow any logging errors
+    }
+  }
+
+  safeLog('info', '--- doGet called ---', { rawE: JSON.stringify(e) });
 
   try {
     // --- Extract params safely ---
@@ -11,12 +24,11 @@ function doGet(e) {
     const emailParam = params.email || '';
     const callback = params.callback;
 
-    Logger.log(`doGet: team=${team}, emailParam=${emailParam}`);
-    Logger.log('all params:', JSON.stringify(params));
+    safeLog('info', `doGet: team=${team}, emailParam=${emailParam}`, { allParams: params });
 
     // --- EARLY RETURN: teamLinks page (no team param) ---
     if (!team) {
-      Logger.log('Serving teamLinks only – skipping auth and team lookups.');
+      safeLog('info', 'Serving teamLinks only – skipping auth and team lookups.');
       const teamLinks = getTeamLinks();
 
       const responseData = {
@@ -31,15 +43,9 @@ function doGet(e) {
       };
 
       const json = JSON.stringify(responseData);
-      if (callback) {
-        return ContentService
-          .createTextOutput(`${callback}(${json})`)
-          .setMimeType(ContentService.MimeType.JAVASCRIPT);
-      } else {
-        return ContentService
-          .createTextOutput(json)
-          .setMimeType(ContentService.MimeType.JSON);
-      }
+      return callback
+        ? ContentService.createTextOutput(`${callback}(${json})`).setMimeType(ContentService.MimeType.JAVASCRIPT)
+        : ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
     }
 
     // --- AUTH & ROLE LOGIC (only if team param exists) ---
@@ -48,39 +54,50 @@ function doGet(e) {
     const authMode = e?.authMode || 'none';
     const effectiveEmail = emailParam || activeUserEmail || 'anonymous@public';
 
-    Logger.log({
-      authMode,
-      activeUserEmail,
-      emailParam,
-      effectiveEmail
-    });
+    safeLog('info', 'Auth details', { authMode, activeUserEmail, emailParam, effectiveEmail });
 
-    const isAdmin = checkGroupMembership(ADMIN_GROUP_EMAIL, effectiveEmail);
-    const isTeamLead = checkGroupMembership(TEAM_LEADS_GROUP_EMAIL, effectiveEmail);
+    // Wrap membership checks in try/catch to avoid crashing if API fails
+    let isAdmin = false;
+    let isTeamLead = false;
+
+    try {
+      isAdmin = checkGroupMembership(ADMIN_GROUP_EMAIL, effectiveEmail);
+    } catch (err) {
+      safeLog('error', 'checkGroupMembership ADMIN error', { effectiveEmail, error: err.message, stack: err.stack });
+      isAdmin = false;
+    }
+
+    try {
+      isTeamLead = checkGroupMembership(TEAM_LEADS_GROUP_EMAIL, effectiveEmail);
+    } catch (err) {
+      safeLog('error', 'checkGroupMembership TEAM_LEADS error', { effectiveEmail, error: err.message, stack: err.stack });
+      isTeamLead = false;
+    }
+
     const isTeamPageEditor = (isTeamLead && effectiveEmail.includes(team)) || isAdmin;
 
-    Logger.log(
-      'Email:',
-      effectiveEmail,
-      'isAdmin:',
-      isAdmin,
-      'isTeamLead:',
-      isTeamLead,
-      'isTeamPageEditor:',
-      isTeamPageEditor
-    );
+    safeLog('info', 'Role check', { effectiveEmail, isAdmin, isTeamLead, isTeamPageEditor });
 
     // --- MAIN TEAM DATA LOOKUPS ---
-    const teamObj = globalLookup(team);
-    const announcements = getRecentAnnouncements(teamObj);
-    const minutes = getLatestMinutesFiles(teamObj, MINUTES_FOLDER_ID, 10);
-    const opsPlanLink = getLatestOpsFile(teamObj, OPS_FOLDER_ID);
+    let teamObj = null, announcements = [], minutes = [], opsPlanLink = null;
+    try {
+      teamObj = globalLookup(team);
+      announcements = getRecentAnnouncements(teamObj);
+      minutes = getLatestMinutesFiles(teamObj, MINUTES_FOLDER_ID, 10);
+      opsPlanLink = getLatestOpsFile(teamObj, OPS_FOLDER_ID);
+    } catch (err) {
+      safeLog('error', 'Team data fetch error', { team, error: err.message, stack: err.stack });
+    }
 
-    let responseData;
+    // --- Handle delete action ---
     if (action === 'delete' && responseId) {
-      Logger.log('Attempting delete for responseId:', responseId);
-      const deleted = deleteFormResponse(responseId);
-      Logger.log(`Delete result for ${responseId}: ${deleted}`);
+      safeLog('info', `Attempting delete for responseId: ${responseId}`);
+      let deleted = false;
+      try {
+        deleted = deleteFormResponse(responseId);
+      } catch (err) {
+        safeLog('error', 'deleteFormResponse error', { responseId, error: err.message, stack: err.stack });
+      }
 
       const message = deleted
         ? '✅ Announcement deleted successfully.'
@@ -97,77 +114,57 @@ function doGet(e) {
       `;
 
       return HtmlService.createHtmlOutput(html);
-    } else {
-      responseData = {
-        success: true,
-        message: 'success: team',
-        page: 'team',
-        team,
-        teamObj,
-        isAdmin,
-        isTeamLead,
-        isTeamPageEditor,
-        announcements,
-        minutes,
-        opsPlanLink,
-        debug: {
-          authMode,
-          activeUserEmail,
-          emailParam,
-          effectiveEmail,
-          activeUser: activeUserEmail || null,
-          teamObjKeys: teamObj ? Object.keys(teamObj) : [],
-          announcementsCount: announcements?.length || 0,
-          minutesCount: minutes?.length || 0,
-          timestamp: new Date().toISOString()
-        }
-      };
     }
 
-    // --- RETURN JSON or JSONP ---
-    const json = JSON.stringify(responseData);
-    if (callback) {
-      return ContentService
-        .createTextOutput(`${callback}(${json})`)
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    } else {
-      return ContentService
-        .createTextOutput(json)
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-  } catch (err) {
-    Logger.log('doGet ERROR:', err);
-    const stack = err.stack || '';
-    let file = 'unknown';
-    let line = null;
-
-    const match = stack.match(/\(([^:]+):(\d+)(?::\d+)?\)/);
-    if (match) {
-      file = match[1];
-      line = match[2];
-    }
-
-    const errorResponse = {
-      success: false,
-      error: err.message,
-      file,
-      line,
-      stack,
+    // --- Standard JSON/JSONP response ---
+    const responseData = {
+      success: true,
+      message: 'success: team',
+      page: 'team',
+      team,
+      teamObj,
+      isAdmin,
+      isTeamLead,
+      isTeamPageEditor,
+      announcements,
+      minutes,
+      opsPlanLink,
       debug: {
-        timestamp: new Date().toISOString(),
-        params: e?.parameter || {},
+        authMode,
+        activeUserEmail,
+        emailParam,
+        effectiveEmail,
+        activeUser: activeUserEmail || null,
+        teamObjKeys: teamObj ? Object.keys(teamObj) : [],
+        announcementsCount: announcements?.length || 0,
+        minutesCount: minutes?.length || 0,
+        timestamp: new Date().toISOString()
       }
     };
 
+    const json = JSON.stringify(responseData);
+    return callback
+      ? ContentService.createTextOutput(`${callback}(${json})`).setMimeType(ContentService.MimeType.JAVASCRIPT)
+      : ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    // Top-level catch ensures backend never returns undefined
+    safeLog('fatal', 'doGet top-level ERROR', { error: err.message, stack: err.stack, rawE: e });
+
+    const stack = err.stack || '';
+    const errorResponse = {
+      success: false,
+      error: err.message || 'Unknown error',
+      stack,
+      debug: {
+        timestamp: new Date().toISOString(),
+        params: e?.parameter || {}
+      }
+    };
     const callback = e?.parameter?.callback;
     const json = JSON.stringify(errorResponse);
-    const output = callback ? `${callback}(${json})` : json;
-
     return ContentService
-      .createTextOutput(output)
-      .setMimeType(callback
-        ? ContentService.MimeType.JAVASCRIPT
-        : ContentService.MimeType.JSON);
+      .createTextOutput(callback ? `${callback}(${json})` : json)
+      .setMimeType(callback ? ContentService.MimeType.JAVASCRIPT : ContentService.MimeType.JSON);
   }
 }
