@@ -186,7 +186,7 @@ function getRecentAnnouncements(teamObj) {
 
   // Filter rows where 'What do you want to update?' == 'Post announcement' and team matches function input
   const announcementRows = data.slice(1).filter(row => {
-    return row[UPDATE_TYPE_COL] === 'Post announcement' && row[TEAM_COL] === teamObj.teamName;
+    return row[UPDATE_TYPE_COL].includes('announcement') && row[TEAM_COL] === teamObj.teamName;
   });
 
   // Sort by Timestamp descending

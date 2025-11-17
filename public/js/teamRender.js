@@ -78,7 +78,7 @@ export async function renderTeamPage(data) {
         const deleteURLWithParams = `${a.deleteURL}&team=${data.teamObj.shortName}`;
         adminBlock = `
           <div class="announcement-admin links">
-            <a href="${a.editURL}" class="edit-link">Edit</a>
+            <a href="${a.editURL}" target="_blank" class="edit-link">Edit</a>
             &nbsp;|&nbsp;
             <a href="${deleteURLWithParams}" target="_blank" class="delete-link">Delete</a>
           </div>
