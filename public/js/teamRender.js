@@ -212,7 +212,7 @@ export async function renderTeamPage(data) {
     : `<p>No Google group found for ${team.teamName}.</p>`;
 
   driveDiv.innerHTML = team.teamDrive
-    ? `<ul><li><a href=${team.teamDrive}>${team.teamName} shared Drive</a> (access other team documents here)</li></ul>`
+    ? `<ul><li><a href=${team.teamDrive}>${team.teamName} Documents</a></li></ul>`
     : `<p>Shared Drive for ${team.teamName} has not been set up yet.</p>`;
 
 
