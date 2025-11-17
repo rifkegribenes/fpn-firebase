@@ -291,38 +291,25 @@
   <!-- ===== JS IMPORTS ===== -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { callBackend } from './js/api.js';
-    import { renderTeamPage } from './js/teamRender.js';
+    import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { config } from './js/config.js';
+    import './js/teamRender.js'; 
 
+    // --- Initialize Firebase ---
     const app = initializeApp(config.firebase);
     const auth = getAuth(app);
 
+    // --- Make Firebase globally available ---
+    window.firebaseApp = app;
+    window.firebaseAuth = auth;
+
     document.addEventListener('DOMContentLoaded', () => {
-      const params = new URLSearchParams(window.location.search);
-      const team = params.get('team') || '';
-
-      const unsubscribe = onAuthStateChanged(auth, (user) => {
-        unsubscribe();
-        const email = user?.email || '';
-        callBackend({ page: 'team', team, email })
-          .then(data => {
-            if (data?.error) console.error('Backend error:', data.error);
-            else renderTeamPage(data);
-          })
-          .catch(err => console.error('Fetch error:', err));
-      });
-
-      // fallback fetch if auth not ready
-      setTimeout(async () => {
-        if (!auth.currentUser) {
-          const data = await callBackend({ page: 'team', team, email: '' });
-          if (!data?.error) renderTeamPage(data);
-        }
-      }, 2000);
+      console.log('index.html DOM loaded — teamRender.js is imported and will handle backend calls.');
     });
   </script>
+
+
+
   <script src="/js/gsite-header.js"></script>
 </body>
 </html>
