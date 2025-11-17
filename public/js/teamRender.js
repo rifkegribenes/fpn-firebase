@@ -1,11 +1,23 @@
 import { callBackend } from './api.js';
 import { config } from './config.js';
-import {
-  onAuthStateChanged,
-  signInWithPopup,
-  signOut,
-  GoogleAuthProvider
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { 
+  getAuth, 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  signOut, 
+  GoogleAuthProvider 
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+
+// Initialize Firebase app
+const app = initializeApp(config.firebase);
+
+// Initialize Firebase Auth and attach globally
+window.firebaseAuth = getAuth(app);
+
+// Initialize Auth provider
+const provider = new GoogleAuthProvider();
 
 // Global helper
 function setLoading(loading, message = "Loading...") {
@@ -29,6 +41,8 @@ function setLoading(loading, message = "Loading...") {
  */
 export async function renderTeamPage(data) {
   console.log('renderTeamPage() data:', data);
+  const updateContainer = document.getElementById('teamUpdateContainer');
+  if (!updateContainer) console.warn('#teamUpdateContainer not found');
 
   const [
     title,
@@ -68,7 +82,7 @@ export async function renderTeamPage(data) {
   // --- Announcements ---
   announcementsDiv.innerHTML = '';
   if (data.announcements?.length) {
-    console.log('rendering announcments');
+    console.log('rendering announcements');
     data.announcements.forEach(a => {
       const div = document.createElement('div');
       div.className = 'announcement-item';
@@ -203,7 +217,6 @@ export async function renderTeamPage(data) {
 
 
   // --- Team Update Link (conditionally rendered) ---
-  const updateContainer = document.getElementById('teamUpdateContainer');
   updateContainer.innerHTML = ''; // clear previous content
 
   if (data.isTeamPageEditor && data.teamObj?.teamName) {
@@ -233,7 +246,10 @@ function updateAuthUI(user) {
     if (userInfo) userInfo.textContent = `Logged in as ${user.email}`;
     if (loginBtn) loginBtn.hidden = true;
     if (logoutBtn) logoutBtn.hidden = false;
-    if (refreshBtn) refreshBtn.style.display = 'inline-block';
+    if (refreshBtn) {
+      refreshBtn.style.display = 'inline-block';
+      attachRefreshListener(); 
+    }
     if (teamUpdateContainer) teamUpdateContainer.style.display = 'block';
     // Optionally show edit/delete links (already handled in renderTeamPage)
   } else {
@@ -249,12 +265,41 @@ function updateAuthUI(user) {
   }
 }
 
-
-
-
-
-const provider = new GoogleAuthProvider();
 let currentUser = null;
+
+// --- Global Firebase Auth Listener ---
+const auth = window.firebaseAuth;
+let prevUser = null; // track previous state
+
+onAuthStateChanged(auth, async (user) => {
+  const email = user?.email || '';
+  console.log('onAuthStateChanged →', email || 'anonymous');
+
+  // Always update UI
+  updateAuthUI(user);
+
+  // Detect “just logged out”: previously logged in, now null
+  const justLoggedOut = prevUser && !user;
+
+  // Load backend if:
+  // 1. Initial load (prevUser === null)
+  // 2. User is logged in
+  if (!justLoggedOut) {
+    const params = new URLSearchParams(window.location.search);
+    const team = params.get('team') || '';
+
+    console.log('Loading backend for team:', team);
+    await loadBackend(team, email);
+  } else {
+    console.log('User just logged out — skipping backend load.');
+  }
+
+  // Update prevUser for next auth change
+  prevUser = user;
+});
+
+
+
 
 // --- Immediately fetch backend for anonymous user ---
 async function loadBackend(team, email = '') {
@@ -346,6 +391,7 @@ async function handleLoginSuccess() {
   const team = urlParams.get('team') || '';
   const currentEmail = currentUser?.email;
   const lastEmail = localStorage.getItem('lastUserEmail');
+  const auth = window.firebaseAuth;
 
   console.log(`handleLoginSuccess() — current=${currentEmail}, last=${lastEmail}, team="${team}"`);
 
@@ -386,10 +432,9 @@ async function handleLoginSuccess() {
  * Setup login/logout buttons
  */
 function setupAuthUI() {
+  const auth = window.firebaseAuth;
   const loginBtn = document.getElementById("loginBtn");
   const logoutBtn = document.getElementById("logoutBtn");
-  const auth = window.firebaseAuth;  // <- make sure auth is defined here
-  const provider = new GoogleAuthProvider();
 
   if (loginBtn) loginBtn.addEventListener('click', () => signInWithPopup(auth, provider));
   if (logoutBtn) logoutBtn.addEventListener('click', () => signOut(auth));
@@ -501,6 +546,7 @@ function renderTeamLinks(links) {
  * Main init() — loads team data from backend, uses user email if logged in.
  */
 async function init(user = currentUser) {
+  const auth = window.firebaseAuth;
   // --- Wait for Firebase auth state if needed ---
   if (!user || !user.email) {
     console.log('init(): user not ready yet — waiting for Firebase auth state...');
@@ -756,40 +802,18 @@ async function refreshData() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // Make sure Firebase is initialized
+document.addEventListener('DOMContentLoaded', () => {
+  const updateContainer = document.getElementById('teamUpdateContainer');
   const auth = window.firebaseAuth;
   if (!auth) {
     console.error('Firebase auth not initialized yet');
     return;
   }
 
-  // Setup login/logout buttons
+  // Hook up login/logout buttons
   setupAuthUI();
 
-  // Read team param from URL
-  const params = new URLSearchParams(window.location.search);
-  const team = params.get('team') || '';
-
-  // Listen for auth changes
-  onAuthStateChanged(auth, async (user) => {
-    currentUser = user || null;
-    const email = user?.email || '';
-    console.log('Auth state changed:', email || 'anonymous');
-
-    // Update UI
-    updateAuthUI(user);
-
-    // Load backend for this user
-    const params = new URLSearchParams(window.location.search);
-    const team = params.get('team') || '';
-    await loadBackend(team, email);
-  });
-
-
-  // Trigger anonymous load if no user is logged in yet
-  if (!auth.currentUser) {
-    await loadBackend(team, '');
-  }
+  // DO NOT call loadBackend here.
+  // Auth state listener will handle the initial load.
 });
 
