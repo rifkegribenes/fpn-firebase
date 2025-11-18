@@ -106,6 +106,7 @@ const TEAM_LEADS_EMAILS = [
   "tl.portsmouth@friendsofportlandnet.org",
   "tl.reed@friendsofportlandnet.org",
   "tl.richmond@friendsofportlandnet.org",
+  "tl.riverdale@friendsofportlandnet.org",
   "tl.rosecity@friendsofportlandnet.org",
   "tl.roseway@friendsofportlandnet.org",
   "tl.russell@friendsofportlandnet.org",
@@ -137,7 +138,7 @@ function checkGroupMembership(groupEmail, userEmail) {
   if (groupEmail === ADMIN_GROUP_EMAIL) {
     result = ADMIN_EMAILS.includes(userEmail);
   } else if (groupEmail === TEAM_LEADS_GROUP_EMAIL) {
-    result = TEAM_LEADS_EMAILS.includes(userEmail);
+    result = TEAM_LEADS_EMAILS.includes(userEmail) || (userEmail.includes("tl.") && userEmail.includes("friendsofportlandnet.org"));
   } else {
     try {
       const member = AdminDirectory.Members.get(groupEmail, userEmail);
