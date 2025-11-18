@@ -15,7 +15,7 @@
           <!-- Fixed container -->
           <div id="headerContainer">
             <!-- Logo and Hamburger -->
-            <div class="logoContainter">
+            <div class="logoContainer">
               <a href="https://sites.google.com/friendsofportlandnet.org/teamspace/home" class="logo">
                 <img src="img/logo.png" alt="Friends of Portland NET">
               </a>
@@ -25,23 +25,21 @@
             <div id="desktopNavContainer">
               <nav id="desktopNav">
                 <ul>
-                  <li><a href="/home">Home</a></li>
-                  <li><a href="/teams">Teams</a></li>
-                  <li>
-                    <a href="/learning">Learning</a>
+                  <li class="top"><a class="nlink" href="https://sites.google.com/friendsofportlandnet.org/teamspace/home">Home</a></li>
+                  <li class="top"><a class="nlink" href="https://sites.google.com/friendsofportlandnet.org/teamspace/teams">Teams</a></li>
+                  <li class="top">
+                    <a class="nlink" href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning">Learning</a>
                     <div class="submenu-caret" title="Expand/Collapse">
-                      <svg class="submenu-caret" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" fill="none">
-                        <path d="M8 10l4 4 4-4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                      </svg>
+                      <svg class="submenu-caret nlink" viewBox="0 0 24 24" focusable="false"><g transform="translate(9.7,12) rotate(45)"><path d="M-4.2 0 L4.2 0" stroke-width="2"></path></g><g transform="translate(14.3,12) rotate(-45)"><path d="M-4.2 0 L4.2 0" stroke-width="2"></path></g></svg>
                     </div>
-                    <ul>
-                      <li><a href="/learning/new-nets">New NETS</a></li>
-                      <li><a href="/learning/team-leaders">Team leaders</a></li>
-                      <li><a href="/learning/aros">AROs</a></li>
-                      <li><a href="/learning/radios">Radios!</a></li>
+                    <ul class="desktopsub sub">
+                      <li class="sub"><a class="nlink sub" href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/new-nets">New NETS</a></li>
+                      <li class="sub"><a class="nlink sub" href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/team-leaders">Team leaders</a></li>
+                      <li class="sub"><a class="nlink sub" href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/aros">AROs</a></li>
+                      <li class="sub"><a class="nlink sub" href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/radios">Radios!</a></li>
                     </ul>
                   </li>
-                  <li><a href="/calendar">Calendar</a></li>
+                  <li class="top"><a class="nlink" href="https://sites.google.com/friendsofportlandnet.org/teamspace/calendar">Calendar</a></li>
                 </ul>
               </nav>
             </div>
@@ -61,18 +59,21 @@
             <nav id="mobileNav" aria-hidden="true" style="display:none;">
               <span id="mobileMenuClose">&times;</span>
               <ul>
-                <li><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/home">Home</a></li>
-                <li><a href="https://friends-of-portland-net.web.app/">Teams</a></li>
-                <li>
+                <li class="top"><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/home">Home</a></li>
+                <li class="top"><a href="https://friends-of-portland-net.web.app/">Teams</a></li>
+                <li class="top">
                   <a href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning">Learning</a>
-                  <ul>
-                    <li><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/new-nets">New NETS</a></li>
-                    <li><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/team-leaders">Team Leaders</a></li>
-                    <li><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/aros">AROs</a></li>
-                    <li><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/radios">Radios!</a></li>
+                  <div class="submenu-caret" title="Expand/Collapse">
+                    <svg class="submenu-caret nlink" viewBox="0 0 24 24" focusable="false"><g transform="translate(9.7,12) rotate(45)"><path d="M-4.2 0 L4.2 0" stroke-width="2"></path></g><g transform="translate(14.3,12) rotate(-45)"><path d="M-4.2 0 L4.2 0" stroke-width="2"></path></g></svg>
+                  </div>
+                  <ul class="mobilesub sub">
+                    <li class="sub"><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/new-nets">New NETS</a></li>
+                    <li class="sub"><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/team-leaders">Team Leaders</a></li>
+                    <li class="sub"><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/aros">AROs</a></li>
+                    <li class="sub"><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/radios">Radios!</a></li>
                   </ul>
                 </li>
-                <li><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/calendar">Calendar</a></li>
+                <li class="top"><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/calendar">Calendar</a></li>
               </ul>
             </nav>
           </div>

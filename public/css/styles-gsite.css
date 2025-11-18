@@ -62459,7 +62459,6 @@ sentinel {
   table-layout: fixed;
   left: 0;
   padding-left: 36px;
-  padding-right: 8px;
   position: fixed;
   top: 0;
   -webkit-transition: opacity .5s, padding-left .125s;
@@ -62486,7 +62485,11 @@ sentinel {
     transition: opacity 0ms .3s;
     vertical-align: middle;
     white-space: nowrap;
-    padding: 10px 12px;
+    padding: 9px 13px;
+}
+
+#desktopNav li.sub {
+    padding: 0 0;
 }
 
 
@@ -62513,6 +62516,12 @@ sentinel {
   left: 0;
   min-width: 200px;
   padding: 0;
+  border-radius: 2px;
+  left: -28px;
+  overflow-y: auto;
+  padding: 8px 0;
+  width: 240px;
+  flex-direction: column;
 }
 
 .submenu-caret {
@@ -62521,20 +62530,21 @@ sentinel {
   margin-left: 3px;
   outline: none;
   overflow: hidden;
-/*  padding-left: 4px;
-  padding-right: 2px;*/
   vertical-align: top;
 }
 
 /* Caret next to submenu items */
 .submenu-caret svg {
-  width: 24px;
-  height: 24px;
   stroke: rgb(28,28,28); /* desktop default */
   transition: transform 0.3s;
   display: inline-block;
   margin-left: 6px;
   vertical-align: middle;
+  height: 12px;
+  -webkit-transform: scale(2);
+  transform: scale(2);
+  vertical-align: middle;
+  width: 12px;
 }
 
 /* Rotate caret when open */
@@ -62638,11 +62648,7 @@ cubic-bezier(.4, 0, .2, 1);
 }
 
 /* ------------------- DESKTOP HOVER ------------------- */
-@media (min-width: 768px) {
-  #siteHeader li:hover > ul {
-    display: block;
-  }
-}
+
 
 /* Logo */
 #siteHeader .logo img {
@@ -62662,6 +62668,17 @@ cubic-bezier(.4, 0, .2, 1);
     vertical-align: middle;
     white-space: nowrap;
 }
+
+@media (min-width: 768px) {
+  #siteHeader li:hover > ul {
+    display: block;
+  }
+
+  .logoContainer {
+    padding-left: 16px;
+  }
+}
+
 
 
 
