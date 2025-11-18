@@ -62616,7 +62616,7 @@ cubic-bezier(.4, 0, .2, 1);
     left: 0;
     width: 250px;
     height: 100vh;
-    padding: 56px 20px 20px 20px;
+    padding: 56px 20px 20px 40px;
     background-color: #073763;
     overflow-y: auto;
     display: none;
@@ -62635,12 +62635,30 @@ cubic-bezier(.4, 0, .2, 1);
   }
 
   #mobileNav ul li {
-    padding: 12px 0;
+    padding: 6px 0;
   }
 
   #mobileNav ul li ul {
     display: none;
     padding-left: 16px;
+  }
+
+  #siteHeader #mobileNav li.top a {
+    color: white !important;
+    font-weight: 400 !important;
+  }
+
+  /* Submenu links */
+  #siteHeader #mobileNav li ul li a {
+    padding: 0 20px;
+  }
+
+  #siteHeader #mobileNav svg g path {
+    stroke: white !important;
+  }
+
+  #siteHeader li ul {
+    position: inherit;
   }
 
   /* Close button */
