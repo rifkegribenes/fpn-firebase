@@ -31,6 +31,19 @@ function logToSheet(entry) {
   }
 }
 
+function safeLog(where, level, message, extra = {}) {
+    try {
+      logToSheet({
+        level,
+        where,
+        message,
+        ...extra
+      });
+    } catch (err) {
+      // swallow any logging errors
+    }
+  }
+
 function toSpinalCase(str) {
   return str
     .replace(/([a-z])([A-Z])/g, '$1 $2')      // Add space between camelCase
@@ -214,7 +227,7 @@ function getRecentAnnouncements(teamObj) {
 
 function renameFile(team, file, fileType, meetingDate) {
   Logger.log('####################   renameFile');
-  
+  safeLog('renameFile', 'info', `230: team: ${team}, file: ${file}, fileType: ${fileType}, meetingDate: ${meetingDate},`);
   // Only touch recently added files (e.g. last 60 seconds)
   const created = file.getDateCreated();
   const now = new Date();
@@ -236,6 +249,7 @@ function renameFile(team, file, fileType, meetingDate) {
     }
     // Logger.log(`originalName: ${originalName}`);
     // Logger.log(`newName: ${newName}`);
+    safeLog('renameFile', 'info', `originalName: ${originalName}, newName: ${newName}, team: ${team}`);
     file.setName(newName);
     file.setDescription(team);
     // Logger.log(`file description: *********************`);
@@ -247,6 +261,7 @@ function renameFile(team, file, fileType, meetingDate) {
       file.setDescription(currentDesc);
       Logger.log(`file description with mtgDate:`);
       Logger.log(file.getDescription());
+      safeLog('renameFile', 'info', `mtgDate: ${mtgDate}, file description: ${file.getDescription()}`);
     }
   } else {
     Logger.log(`skipping older file ${ageInSeconds}`);
@@ -276,6 +291,7 @@ function onFormSubmitHandler2(e) {
   const fileType = responses["What do you want to update?"][0].includes('minutes') ? 'minutes' : responses["What do you want to update?"][0].includes('operations') ? 'ops' : '';
   const meetingDate = responses["Date of meeting"][0] || '';
   Logger.log(`team: ${team}, fileType: ${fileType}`);
+  safeLog('onFormSubmitHandler2', 'info', 'File upload logic', { team, fileType });
 
   const minutesFolder = DriveApp.getFolderById(MINUTES_FOLDER_ID);
   const opsFolder = DriveApp.getFolderById(OPS_FOLDER_ID);
@@ -284,32 +300,47 @@ function onFormSubmitHandler2(e) {
 
   if (fileType === 'minutes') {
     while (minutesFiles.hasNext()) {
-    const file = minutesFiles.next();
-    // Logger.log('minutesFile');
-    // Logger.log(file.getName());
+      const file = minutesFiles.next();
+      // Logger.log('minutesFile');
+      // Logger.log(file.getName());
+      const fileName = file.getName();
+      safeLog('onFormSubmitHandler2', 'info', 'Minutes file upload', { fileName });
 
-    renameFile(globalLookup(team).shortName, file, fileType, meetingDate)
-  }
+      try {
+        renameFile(globalLookup(team).shortName, file, fileType, meetingDate)
+      } catch(err) {
+        safeLog('onFormSubmitHandler2', 'error', `renameFile: err: ${err}, team: ${team}, shortName: ${globalLookup(team).shortName}, file: ${file}, fileType: ${fileType}, meetingDate: ${meetingDate}` );
+      }
+
+      
+    }
 
   } else if (fileType === 'ops') {
     while (opsFiles.hasNext()) {
-    const file = opsFiles.next();
-    // Logger.log('opsFile');
-    // Logger.log(file.getName());
+      const file = opsFiles.next();
+      // Logger.log('opsFile');
+      // Logger.log(file.getName());
 
-    renameFile(globalLookup(team).shortName, file, fileType)
-    
+      try {
+        renameFile(globalLookup(team).shortName, file, fileType)
+      } catch (err) {
+        safeLog('onFormSubmitHandler2', 'error', `renameFile: err: ${err}, team: ${team}, shortName: ${globalLookup(team).shortName}, file: ${file}, fileType: ${fileType}` );
+      }
     }
-  } else {
-    Logger.log('no fileType found'
-    )
+    
+    } else {
+    Logger.log('no fileType found');
+    safeLog('onFormSubmitHandler2', 'info', `no fileType found`);
   }
 }
+
+
 
 function getLatestMinutesFiles(teamObj, folderId, maxFiles) {
   Logger.log(`getLatestMinutesFiles`);
   const teamPrefix = `${teamObj.shortName}_minutes`;
   Logger.log(`teamPrefix: ${teamPrefix}`);
+  safeLog('getLatestMinutesFiles', 'info', `teamObj: ${teamObj}, folderId: ${folderId}, maxFiles: ${maxFiles}, teamPrefix: ${teamPrefix}`);
   const response = Drive.Files.list({
     q: `'${folderId}' in parents and (mimeType='application/pdf' or mimeType='application/vnd.openxmlformats-officedocument.wordprocessingml.document' or mimeType='application/msword') and trashed=false and name contains '${teamPrefix}'`,
     orderBy: 'createdTime desc',
@@ -318,6 +349,7 @@ function getLatestMinutesFiles(teamObj, folderId, maxFiles) {
   });
   Logger.log('##########################');
   Logger.log(response);
+  safeLog('getLatestMinutesFiles', 'info', `response: ${response}, response.items: ${response.items}`);
   return response.files || response.items || [];
 }
 

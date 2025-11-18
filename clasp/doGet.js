@@ -1,19 +1,8 @@
 function doGet(e) {
   // Helper to safely log to sheet without crashing
-  function safeLog(level, message, extra = {}) {
-    try {
-      logToSheet({
-        level,
-        where: 'doGet',
-        message,
-        ...extra
-      });
-    } catch (err) {
-      // swallow any logging errors
-    }
-  }
+  
 
-  safeLog('info', '--- doGet called ---', { rawE: JSON.stringify(e) });
+  safeLog('doGet', 'info', `--- doGet called ---, rawE: ${ JSON.stringify(e) }`);
 
   try {
     // --- Extract params safely ---
@@ -24,11 +13,11 @@ function doGet(e) {
     const emailParam = params.email || '';
     const callback = params.callback;
 
-    safeLog('info', `doGet: team=${team}, emailParam=${emailParam}`, { allParams: params });
+    safeLog('doGet', 'info', `doGet: team=${team}, emailParam=${emailParam}, allParams: ${params}`);
 
     // --- EARLY RETURN: teamLinks page (no team param) ---
     if (!team) {
-      safeLog('info', 'Serving teamLinks only – skipping auth and team lookups.');
+      safeLog('doGet', 'info', 'Serving teamLinks only – skipping auth and team lookups.');
       const teamLinks = getTeamLinks();
 
       const responseData = {
@@ -54,7 +43,7 @@ function doGet(e) {
     const authMode = e?.authMode || 'none';
     const effectiveEmail = emailParam || activeUserEmail || 'anonymous@public';
 
-    safeLog('info', 'Auth details', { authMode, activeUserEmail, emailParam, effectiveEmail });
+    safeLog('doGet', 'info', `Auth details: authMode: ${authMode}, activeUserEmail: ${activeUserEmail}, emailParam: ${emailParam}, effectiveEmail: ${effectiveEmail}`);
 
     // Wrap membership checks in try/catch to avoid crashing if API fails
     let isAdmin = false;
@@ -63,20 +52,20 @@ function doGet(e) {
     try {
       isAdmin = checkGroupMembership(ADMIN_GROUP_EMAIL, effectiveEmail);
     } catch (err) {
-      safeLog('error', 'checkGroupMembership ADMIN error', { effectiveEmail, error: err.message, stack: err.stack });
+      safeLog('doGet', 'error', `checkGroupMembership ADMIN error, effectiveEmail: ${effectiveEmail}, error: ${err.message}, stack: ${err.stack}`);
       isAdmin = false;
     }
 
     try {
       isTeamLead = checkGroupMembership(TEAM_LEADS_GROUP_EMAIL, effectiveEmail);
     } catch (err) {
-      safeLog('error', 'checkGroupMembership TEAM_LEADS error', { effectiveEmail, error: err.message, stack: err.stack });
+      safeLog('doGet', 'error', `checkGroupMembership TEAM_LEADS error, effectiveEmail: ${effectiveEmail}, error: ${err.message}, stack: ${err.stack}`);
       isTeamLead = false;
     }
 
     const isTeamPageEditor = (isTeamLead && effectiveEmail.includes(team)) || isAdmin;
 
-    safeLog('info', 'Role check', { effectiveEmail, isAdmin, isTeamLead, isTeamPageEditor });
+    safeLog('doGet', 'info', `Role check: ${effectiveEmail}, isAdmin: ${isAdmin}, isTeamLead: ${isTeamLead}, isTeamPageEditor: ${isTeamPageEditor}`);
 
     // --- MAIN TEAM DATA LOOKUPS ---
     let teamObj = null, announcements = [], minutes = [], opsPlanLink = null;
@@ -86,17 +75,17 @@ function doGet(e) {
       minutes = getLatestMinutesFiles(teamObj, MINUTES_FOLDER_ID, 10);
       opsPlanLink = getLatestOpsFile(teamObj, OPS_FOLDER_ID);
     } catch (err) {
-      safeLog('error', 'Team data fetch error', { team, error: err.message, stack: err.stack });
+      safeLog('doGet', 'error', `Team data fetch error: team: ${team}, error: ${err.message}, stack: ${err.stack}`);
     }
 
     // --- Handle delete action ---
     if (action === 'delete' && responseId) {
-      safeLog('info', `Attempting delete for responseId: ${responseId}`);
+      safeLog('doGet', 'info', `Attempting delete for responseId: ${responseId}`);
       let deleted = false;
       try {
         deleted = deleteFormResponse(responseId);
       } catch (err) {
-        safeLog('error', 'deleteFormResponse error', { responseId, error: err.message, stack: err.stack });
+        safeLog('doGet', 'error', `deleteFormResponse error, responseId: ${responseId}, error: ${err.message}, stack: ${err.stack}`);
       }
 
       const message = deleted
@@ -149,7 +138,7 @@ function doGet(e) {
 
   } catch (err) {
     // Top-level catch ensures backend never returns undefined
-    safeLog('fatal', 'doGet top-level ERROR', { error: err.message, stack: err.stack, rawE: e });
+    safeLog('doGet', 'fatal', `doGet top-level ERROR, error: ${err.message}, stack: ${err.stack}, rawE: ${e}`);
 
     const stack = err.stack || '';
     const errorResponse = {

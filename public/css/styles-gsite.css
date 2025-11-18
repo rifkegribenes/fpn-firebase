@@ -62418,125 +62418,299 @@ body .jcJzye-fFW7wc.XKSfm-Sx9Kwc .fFW7wc-TvD9Pc-LgbsSe {
 sentinel {
 }
 
-/* navbar links */
-#mainNavWide > li > div > div > a,
-.I35ICb > a {
-  font-family: Arial;
-  font-size: 17.3333px !important;
+/* ------------------- GENERAL NAV STYLES ------------------- */
+#siteHeader {
+  font-family: Arial, sans-serif;
+  font-size: 17px;
+  width: 100%;
+  z-index: 100;
+  position: fixed;
+  top: 0;
+  left: 0;
 }
 
-@media only screen and (min-width: 768px) {
-  .oGuwee > ul > li {
-    padding: 7px;
+#siteHeader a {
+  text-decoration: none;
+  color: rgb(28, 28, 28);
+}
+
+#siteHeader ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#siteHeader li {
+  position: relative;
+}
+
+#headerContaner {
+  position:fixed; 
+  width: 100%; 
+  z-index:100;
+  top:0;
+  left:0;
+  height:56;
+}
+
+#desktopNavContainer {
+  display: table;
+  min-width: 100%;
+  table-layout: fixed;
+  left: 0;
+  padding-left: 36px;
+  position: fixed;
+  top: 0;
+  -webkit-transition: opacity .5s, padding-left .125s;
+  transition: opacity .5s, padding-left .125s;
+  white-space: nowrap;
+  width: 100%;
+  z-index: 20;
+}
+
+#desktopNav {
+  display: table-cell;
+  text-align: right;
+  vertical-align: middle;
+  padding: 10px 0;
+}
+
+#desktopNav li {
+    display: inline-block;
+    max-width: 300px;
+    overflow: visible;
+    position: relative;
+    text-align: left;
+    -webkit-transition: opacity 0ms .3s;
+    transition: opacity 0ms .3s;
+    vertical-align: middle;
+    white-space: nowrap;
+    padding: 9px 13px;
+}
+
+#desktopNav li.sub {
+    padding: 0 0;
+}
+
+
+#desktopNav li a {
+    font-family: Arial;
+    font-size: 17.3333px !important;
+    font-weight: 400;
+    white-space: nowrap;
+    display: inline-block;
+    max-width: 240px;
+    position: relative;
+    vertical-align: top;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+/* Desktop submenu hidden by default */
+#siteHeader li ul {
+  display: none;
+  position: absolute;
+  background: #073763;
+  top: 100%;
+  left: 0;
+  min-width: 200px;
+  padding: 0;
+  border-radius: 2px;
+  left: -28px;
+  overflow-y: auto;
+  padding: 8px 0;
+  width: 240px;
+  flex-direction: column;
+}
+
+.submenu-caret {
+  cursor: pointer;
+  display: inline-block;
+  margin-left: 3px;
+  outline: none;
+  overflow: hidden;
+  vertical-align: top;
+}
+
+/* Caret next to submenu items */
+.submenu-caret svg {
+  stroke: rgb(28,28,28); /* desktop default */
+  transition: transform 0.3s;
+  display: inline-block;
+  margin-left: 6px;
+  vertical-align: middle;
+  height: 12px;
+  -webkit-transform: scale(2);
+  transform: scale(2);
+  vertical-align: middle;
+  width: 12px;
+}
+
+/* Rotate caret when open */
+.nav-item.has-submenu.open > .submenu-caret svg {
+  transform: rotate(180deg);
+}
+
+/* Submenu links */
+#siteHeader li ul li a {
+  display: block;
+  padding: 8px 16px;
+  color: white;
+}
+
+/* Hide mobile nav on desktop */
+@media (min-width: 768px) {
+    #hamburger {
+        display: none;
+    }
+}
+
+/* ------------------- MOBILE STYLES ------------------- */
+@media (max-width: 767px) {
+
+  /* hide desktop nav */
+  #desktopNavContainer {
+    display: none !important;
   }
-}
 
-/* ---------- MOBILE STYLES ---------- */
-@media only screen and (max-width: 767px) {
+  /* shift siteHeader to right to make room for hamburger */
+  #siteHeader {
+    padding-left: 36px;
+  }
 
-  /* Hamburger default color */
-  #s9iPrd svg path {
-    stroke: rgb(28, 28, 28);
+  /* Hamburger icon */
+  #hamburger {
+    color: white;
+    cursor: pointer;
+    height: 55px;
+    outline: none;
+    padding: 16px 12px;
+    width: 48px;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  #hamburger svg {
+    transition: transform .45s 
+cubic-bezier(.4, 0, .2, 1), -webkit-transform .45s 
+cubic-bezier(.4, 0, .2, 1);
+    height: 24px;
+    width: 24px;
+  }
+
+  #hamburger svg path {
+    stroke: rgb(28,28,28);
     transition: stroke 0.3s;
   }
 
-  /* Mobile menu open */
-  body.menu-open #s9iPrd svg path {
+  body.menu-open #hamburger svg path {
     stroke: white;
   }
 
-  /* Base hidden menu state */
-  #yuynLe {
+  /* Mobile nav container */
+  #mobileNav {
     position: fixed;
     top: 0;
     left: 0;
     width: 250px;
     height: 100vh;
-    padding: 20px;
-    padding-top: 56px;
+    padding: 56px 20px 20px 40px;
     background-color: #073763;
     overflow-y: auto;
-    z-index: 9999;
     display: none;
     transform: translateX(-100%);
     opacity: 0;
     pointer-events: none;
     transition: transform 240ms ease, opacity 240ms ease;
-    transform-origin: left top;
+    z-index: 9999;
   }
 
-  /* When menu is open (visible) */
-  body.menu-open #yuynLe {
+  body.menu-open #mobileNav {
     display: block !important;
     transform: translateX(0) !important;
     opacity: 1 !important;
     pointer-events: auto !important;
-    z-index: 2147483647 !important; /* always on top */
   }
 
-  /* Overlay link styles when open */
-  body.menu-open #yuynLe .IKA38e {
-    opacity: 1 !important;
-    transform: none !important;
+  #mobileNav ul li {
+    padding: 6px 0;
+  }
+
+  #mobileNav ul li ul {
+    display: none;
+    padding-left: 16px;
+  }
+
+  #siteHeader #mobileNav li.top a {
     color: white !important;
-    margin-top: 12px;
-    padding-left: 48px;
+    font-weight: 400 !important;
   }
 
-  body.menu-open #yuynLe .I35ICb {
-    color: white !important;
+  /* Submenu links */
+  #siteHeader #mobileNav li ul li a {
+    padding: 0 20px;
   }
 
-  body.menu-open .JzO0Vc .IKA38e.r8s4j-R6PoUb {
-    padding-left: 36px;
+  #siteHeader #mobileNav svg g path {
+    stroke: white !important;
+  }
+
+  #siteHeader li ul {
+    position: inherit;
   }
 
   /* Close button */
-  #menuCloseContainer {
-    position: absolute;
-    height: 32px;
-    left: 16px;
-    top: 8px;
-    width: 32px;
-  }
-
   #mobileMenuClose {
     font-size: 28px;
     color: white;
     cursor: pointer;
+    position: absolute;
+    top: 8px;
+    left: 16px;
     z-index: 10000;
   }
 
-  /* Submenu carets */
-  #yuynLe svg {
-    fill: white !important;
-    stroke: white !important;
+  /* Caret rotation if needed */
+  .open > ul {
+    display: block !important;
+  }
+}
+
+/* ------------------- DESKTOP HOVER ------------------- */
+
+
+/* Logo */
+#siteHeader .logo img {
+  display: inline-block;
+    max-height: 56px;
+    max-width: 225px;
+    padding: 8px 4px 8px 12px;
+    vertical-align: middle;
+}
+
+.logoContainer {
+    display: table-cell;
+    font-size: 24px;
+    height: 56px;
+    max-width: 380px;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+  #siteHeader li:hover > ul {
+    display: block;
   }
 
-  /* Disable hover expansion on mobile */
-/*  li[data-nav-level="1"]:hover > .oGuwee {
-    display: none !important;
-  }*/
-
-  /* Ensure submenu lists (.VcS63b) appear inside open parent */
-  body.menu-open #yuynLe ul.VcS63b {
-    background: none;
-    color: white;
+  .logoContainer {
     padding-left: 16px;
   }
-
-  /* Caret rotation and submenu display */
-  #yuynLe [jsname="ix0Hvc"].open svg {
-      transform: rotate(180deg);
-      transition: transform 0.3s;
-  }
-
-  /* Ensure submenu ul shows when parent .oGuwee is open */
-  #yuynLe .oGuwee[style*="display: block"] > ul.VcS63b {
-      display: block !important;
-  }
-
 }
+
+
 
 
 

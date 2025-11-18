@@ -1,32 +1,53 @@
-// gsite front end js for header
+window.addEventListener('scroll', function () {
+  const nav = document.getElementById('siteHeader');
+  if (!nav) return;
 
-window.addEventListener('scroll', function() {
-  if (window.innerWidth < 768) return; // Skip mobile
-  const navbarLinks = document.querySelectorAll('.YSH9J');
-  const nav = document.getElementById('navBkgrd')
-  const searchIconPaths = document.querySelectorAll('#search-icon svg path:not([fill="none"])');
+  const isDesktop = window.innerWidth >= 768;
+  const scrolled = window.scrollY > 20;
 
-  if (window.scrollY > 20) {
-    navbarLinks.forEach(el => el.style.color = 'white');
-    searchIconPaths.forEach(path => path.setAttribute('fill', 'white'));
-    nav.style.backgroundColor = 'rgba(7, 55, 99, 1)';
+  // 1 — ALWAYS change siteHeader background (mobile + desktop)
+  nav.style.backgroundColor = scrolled
+    ? 'rgba(7, 55, 99, 1)'
+    : 'transparent';
+
+
+  // 2 — Desktop-only behavior: change link and caret colors
+  if (isDesktop) {
+    const navbarLinks = nav.querySelectorAll('.nlink.top');
+    const carets = nav.querySelectorAll('svg path:not([fill="none"])');
+
+    if (scrolled) {
+      navbarLinks.forEach(el => (el.style.color = 'white'));
+      carets.forEach(path => path.setAttribute('stroke', 'white'));
+    } else {
+      navbarLinks.forEach(el => (el.style.color = 'rgb(28, 28, 28)'));
+      carets.forEach(path =>
+        path.setAttribute('stroke', 'rgb(28, 28, 28)')
+      );
+    }
   } else {
-    navbarLinks.forEach(el => el.style.color = 'rgb(28, 28, 28)');
-    searchIconPaths.forEach(path => path.setAttribute('fill', 'rgb(28, 28, 28)'));
-    nav.style.backgroundColor = 'inherit';
+    const hamburger = document.getElementById('hamburger').querySelectorAll('svg path');
+    if (scrolled) {
+      hamburger.forEach(path => path.style.stroke = 'white');
+    } else {
+      hamburger.forEach(path => path.style.stroke = 'rgb(28, 28, 28)');
+
+    }
   }
 });
 
+
+
 document.addEventListener('DOMContentLoaded', () => {
 
-	if ('scrollRestoration' in history) {
-	    history.scrollRestoration = 'manual';
-	}
+  if ('scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+  }
 
   window.scrollTo(0, 0);
 
-  const hamburger = document.getElementById('s9iPrd');         //  hamburger
-  const mobileNav = document.getElementById('yuynLe');        // mobile nav container
+  const hamburger = document.getElementById('hamburger');  
+  const mobileNav = document.getElementById('mobileNav');  
   const closeBtn = document.getElementById('mobileMenuClose'); // close X in markup
   const body = document.body;
 
@@ -55,13 +76,13 @@ document.addEventListener('DOMContentLoaded', () => {
     body.classList.remove('menu-open');
     hamburger.setAttribute('aria-expanded', 'false');
     // also close any open submenus
-    mobileNav.querySelectorAll('ul.VcS63b').forEach(ul => ul.style.display = 'none');
-    mobileNav.querySelectorAll('[jsname="ix0Hvc"].open').forEach(c => c.classList.remove('open'));
+    mobileNav.querySelectorAll('ul.mobilesub').forEach(ul => ul.style.display = 'none');
+    mobileNav.querySelectorAll('.submenu-caret.open').forEach(c => c.classList.remove('open'));
   }
 
-  // Hook the real hamburger element
+  // Hook the hamburger element
   if (hamburger) {
-    // Make sure it is clickable even if Google Sites has native handlers
+    // Make clickable
     hamburger.addEventListener('click', (e) => {
       e.preventDefault();
       // toggle
@@ -69,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isOpen) closeMenu(); else openMenu();
     });
   } else {
-    console.warn('Hamburger (#s9iPrd) not found.');
+    console.warn('Hamburger not found.');
   }
 
   // Hook the close button (the big X)
@@ -81,88 +102,83 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Desktop hover behavior: expand submenu on hover only when not mobile
-  const topLevelLis = document.querySelectorAll('li[data-nav-level="1"]');
+  const topLevelLis = document.querySelectorAll('li.top');
   topLevelLis.forEach(li => {
-    const submenuUl = li.querySelector('ul.VcS63b');
+    const submenuUl = li.querySelector('ul.sub');
     if (!submenuUl) return;
 
     // Mouse enter/leave only on desktop widths
     if (!isMobile()) {
-    	li.addEventListener('mouseenter', () => {
-	       submenuUl.style.display = 'block';
-	    });
-    	li.addEventListener('mouseleave', () => {
-	      if (!isMobile()) submenuUl.style.display = 'none';
-	    });
+      li.addEventListener('mouseenter', () => {
+         submenuUl.style.display = 'flex';
+      });
+      li.addEventListener('mouseleave', () => {
+        if (!isMobile()) submenuUl.style.display = 'none';
+      });
     } else {
-    	li.removeEventListener('mouseenter', () => {
-	       submenuUl.style.display = 'block';
-	    });
-    	li.removeEventListener('mouseleave', () => {
-	      if (!isMobile()) submenuUl.style.display = 'none';
-	    });
+      li.removeEventListener('mouseenter', () => {
+         submenuUl.style.display = 'flex';
+      });
+      li.removeEventListener('mouseleave', () => {
+        if (!isMobile()) submenuUl.style.display = 'none';
+      });
     }
     
     
-  	});
+    });
 
-  // Caret click for mobile: find the caret, target the UL.VcS63b inside same LI
-  const carets = document.querySelectorAll('#yuynLe [jsname="ix0Hvc"], #mainNavWide [jsname="ix0Hvc"], .dvmRw');
+  // Caret click for mobile: find the caret, target the ul inside the same li
+  const carets = document.querySelectorAll('li:has(.submenu-caret)');
 
   const openCaret = (li) => {
-  	console.log('openCaret');
-  	// the actual visible list is the UL with class VcS63b
-    const submenuUl = li.querySelector('ul.VcS63b');
-    const submenuContainer = li.querySelector('.oGuwee');
+    console.log('openCaret');
+    // the actual visible list is the ul with class sub
+    const submenuUl = li.querySelector('ul.sub');
     if (!submenuUl) return;
     console.log('118')
-    submenuUl.style.display = 'block';
-    submenuContainer.style.display = 'block';
+    submenuUl.style.display = 'flex';
     console.log('121');
     if (!isMobile()) {
-    	console.log(`*********************************** !isMobile, setting colors`);
-    	const mobileMenuBkg = document.querySelector('.oGuwee.eWDljc.RPRy1e.Mkt3Tc');
-    	mobileMenuBkg.style.backgroundColor = 'rgba(7, 55, 99, 1)';
-    	mobileMenuBkg.style.color = 'white';
+      console.log(`*********************************** !isMobile, setting colors`);
+      submenuUl.style.backgroundColor = 'rgba(7, 55, 99, 1)';
+      submenuUl.style.color = 'white';
     }
   }
 
   const closeCaret = (li) => {
-  	console.log('closeCaret');
-  	// the actual visible list is the UL with class VcS63b
-    const submenuUl = li.querySelector('ul.VcS63b');
-    const submenuContainer = li.querySelector('.oGuwee');
+    console.log('closeCaret');
+    // the actual visible list is the ul with class sub
+    const submenuUl = li.querySelector('ul.sub');
     if (!submenuUl) return;
     submenuUl.style.display = 'none';
-    submenuContainer.style.display = 'none';
     if (!isMobile) {
-    	console.log(`!isMobile, setting colors`);
-    	document.querySelector('.RPRy1e').style.backgroundColor = 'transparent';
-    	document.querySelector('.RPRy1e.I35ICb > a').style.color = 'transparent';
+      console.log(`!isMobile, setting colors`);
+      submenuUl.style.backgroundColor = 'transparent';
+      submenuUl.style.style.color = 'transparent';
     }
   }
 
   carets.forEach(caret => {
     caret.addEventListener('click', (e) => {
-    	console.log('caret click');
+      console.log('caret click');
       e.preventDefault();
       e.stopPropagation();
 
       const li = caret.closest('li');
       if (!li) return;
       console.log(li);;
-      // the actual visible list is the UL with class VcS63b
-      const submenuUl = li.querySelector('ul.VcS63b');
-      const submenuContainer = li.querySelector('.oGuwee');
+      // the actual visible list is the ul with class sub
+      const submenuUl = li.querySelector('ul.sub');
+      // const submenuContainer = li.querySelector('.oGuwee');
       console.log(submenuUl);
       if (!submenuUl) return;
 
-      const isOpen = submenuContainer.style.display === 'block';
+      const isOpen = submenuUl.style.display === 'flex';
       console.log(`isOpen: ${isOpen}`);
       if (!isOpen) {
-      	openCaret(li);
+        openCaret(li);
       } else {
-      	closeCaret(li);
+        closeCaret(li);
       }
       caret.classList.toggle('open', !isOpen);
     });
@@ -172,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('resize', () => {
     if (!isMobile()) {
       // On desktop: reset inline styles so CSS hover works
-      document.querySelectorAll('ul.VcS63b').forEach(ul => {
+      document.querySelectorAll('ul.sub').forEach(ul => {
         ul.style.display = '';
       });
       if (hamburger) hamburger.setAttribute('aria-expanded', 'false');
@@ -191,4 +207,3 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
-

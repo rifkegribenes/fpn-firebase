@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Page</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/styles-gsite.css" />
+</head>
+<body>
+  <div id="app">
+    <div class="pageContainer">
+      <!-- ===== HEADER / LOGO ===== -->
+        <header id="siteHeader">
+          <!-- Fixed container -->
+          <div id="headerContainer">
+            <!-- Logo and Hamburger -->
+            <div class="logoContainer">
+              <a href="https://sites.google.com/friendsofportlandnet.org/teamspace/home" class="logo">
+                <img src="img/logo.png" alt="Friends of Portland NET">
+              </a>
+            </div>
+
+            <!-- Desktop nav -->
+            <div id="desktopNavContainer">
+              <nav id="desktopNav">
+                <ul>
+                  <li class="top"><a class="nlink top" href="https://sites.google.com/friendsofportlandnet.org/teamspace/home">Home</a></li>
+                  <li class="top"><a class="nlink top" href="https://sites.google.com/friendsofportlandnet.org/teamspace/teams">Teams</a></li>
+                  <li class="top">
+                    <a class="nlink top" href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning">Learning</a>
+                    <div class="submenu-caret" title="Expand/Collapse">
+                      <svg class="submenu-caret nlink top" viewBox="0 0 24 24" focusable="false"><g transform="translate(9.7,12) rotate(45)"><path d="M-4.2 0 L4.2 0" stroke-width="2"></path></g><g transform="translate(14.3,12) rotate(-45)"><path d="M-4.2 0 L4.2 0" stroke-width="2"></path></g></svg>
+                    </div>
+                    <ul class="desktopsub sub">
+                      <li class="sub"><a class="nlink sub" href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/new-nets">New NETS</a></li>
+                      <li class="sub"><a class="nlink sub" href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/team-leaders">Team leaders</a></li>
+                      <li class="sub"><a class="nlink sub" href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/aros">AROs</a></li>
+                      <li class="sub"><a class="nlink sub" href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/radios">Radios!</a></li>
+                    </ul>
+                  </li>
+                  <li class="top"><a class="nlink top" href="https://sites.google.com/friendsofportlandnet.org/teamspace/calendar">Calendar</a></li>
+                </ul>
+              </nav>
+            </div>
+
+            <!-- Hamburger for mobile -->
+            <div id="hamburger" role="button" aria-label="Toggle menu" aria-expanded="false">
+              <svg viewBox="0 0 24 24" stroke="currentColor">
+                <g transform="translate(12,12)">
+                  <path d="M-9 -5 L9 -5" fill="none" stroke-width="2"></path>
+                  <path d="M-9 0 L9 0" fill="none" stroke-width="2"></path>
+                  <path d="M-9 5 L9 5" fill="none" stroke-width="2"></path>
+                </g>
+              </svg>
+            </div>
+
+            <!-- Navigation -->
+            <nav id="mobileNav" aria-hidden="true" style="display:none;">
+              <span id="mobileMenuClose">&times;</span>
+              <ul>
+                <li class="top"><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/home">Home</a></li>
+                <li class="top"><a href="https://friends-of-portland-net.web.app/">Teams</a></li>
+                <li class="top">
+                  <a href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning">Learning</a>
+                  <div class="submenu-caret" title="Expand/Collapse">
+                    <svg class="submenu-caret nlink" viewBox="0 0 24 24" focusable="false"><g transform="translate(9.7,12) rotate(45)"><path d="M-4.2 0 L4.2 0" stroke-width="2"></path></g><g transform="translate(14.3,12) rotate(-45)"><path d="M-4.2 0 L4.2 0" stroke-width="2"></path></g></svg>
+                  </div>
+                  <ul class="mobilesub sub">
+                    <li class="sub"><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/new-nets">New NETS</a></li>
+                    <li class="sub"><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/team-leaders">Team Leaders</a></li>
+                    <li class="sub"><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/aros">AROs</a></li>
+                    <li class="sub"><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning/radios">Radios!</a></li>
+                  </ul>
+                </li>
+                <li class="top"><a href="https://sites.google.com/friendsofportlandnet.org/teamspace/calendar">Calendar</a></li>
+              </ul>
+            </nav>
+          </div>
+        </header>
+
+    </div>
+
+    <!-- ===== LOADING SPINNER ===== -->
+      <div id="loadingSpinner">
+        <div class="spinner"></div>
+        <p>Loading team data...</p>
+      </div>
+
+
+    <!-- ===== TEAMLINKS ===== -->
+    <div id="linksContent" class="pageContainer">
+      <div id="teamLinks"></div>
+    </div>
+
+
+    <div id="teamContent" class="pageContainer">
+
+      <!-- ===== PAGE TITLE ===== -->
+      <div id="teamInfo"></div>
+      <h1 id="pageTitle">Team Page</h1>
+      <div id="image"></div>
+
+      <!-- ===== PUBLIC CONTENT ===== -->
+      <div class="publicContent">
+
+        <!-- ===== MAIN + SIDEBAR CONTAINER ===== -->
+        <div class="pcContainer container">
+          <!-- ===== MAIN CONTENT ===== -->
+          <div class="mainContent">
+            <div id="editor"></div>
+
+            <section class="block announcements">
+              <h3 class="blockhead">Announcements</h3>
+              <div id="announcements" class="cont"></div>
+            </section>
+
+            <section class="block calendar">
+              <h3 class="blockhead">Upcoming Events</h3>
+              <div id="events" class="cont"></div>
+            </section>
+          </div>
+
+          <!-- ===== SIDEBAR ===== -->
+          <aside class="sidebar">
+
+            <!-- ===== QUICK LINKS ===== -->
+            <div class="quickLinks" id="quickLinks">
+              <p class="qlHed">Quick Links</p>
+              <p class="qlP"><a href="https://app.betterimpact.com/" target="_blank">Log hours on MIP</a></p>
+            </div>
+
+            <section class="sidebar-section minutes">
+              <h4>Meeting Minutes</h4>
+              <div id="minutes" class="cont"></div>
+            </section>
+
+            <section class="sidebar-section ops">
+              <h4>Operations Plan</h4>
+              <div id="ops" class="cont"></div>
+            </section>
+
+            <section class="sidebar-section group">
+              <h4>Google Group</h4>
+              <div id="group" class="cont"></div>
+            </section>
+
+            <section class="sidebar-section drive">
+              <h4>Team Drive</h4>
+              <div id="drive" class="cont"></div>
+            </section>
+
+            <!-- ===== ADMIN / FOOTER ===== -->
+              <div id="content"></div>
+
+              <div id="adminButtons">
+                <div id="teamUpdateContainer"></div>
+                <button id="refreshBtn" hidden>Refresh data</button>
+                <button id="loginBtn">Login</button>
+                <button id="logoutBtn" hidden>Logout</button>
+              </div>
+
+              <div id="userInfo"></div>
+            
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===== JS IMPORTS ===== -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { config } from './js/config.js';
+    import './js/teamRender.js'; 
+
+    // --- Initialize Firebase ---
+    const app = initializeApp(config.firebase);
+    const auth = getAuth(app);
+
+    // --- Make Firebase globally available ---
+    window.firebaseApp = app;
+    window.firebaseAuth = auth;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('index.html DOM loaded — teamRender.js is imported and will handle backend calls.');
+    });
+  </script>
+
+
+
+  <script src="/js/gsite-header.js"></script>
+</body>
+</html>
