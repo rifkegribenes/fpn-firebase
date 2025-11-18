@@ -1,20 +1,41 @@
-window.addEventListener('scroll', function() {
-  if (window.innerWidth < 768) return; // Skip mobile
-
+window.addEventListener('scroll', function () {
   const nav = document.getElementById('siteHeader');
-  const navbarLinks = nav ? nav.querySelectorAll('.nlink') : [];
-  const carets = nav ? nav.querySelectorAll('svg path:not([fill="none"])') : [];
+  if (!nav) return;
 
-  if (window.scrollY > 20) {
-    if (nav) nav.style.backgroundColor = 'rgba(7, 55, 99, 1)';
-    navbarLinks.forEach(el => el.style.color = 'white');
-    carets.forEach(path => path.setAttribute('stroke', 'white'));
+  const isDesktop = window.innerWidth >= 768;
+  const scrolled = window.scrollY > 20;
+
+  // 1 — ALWAYS change siteHeader background (mobile + desktop)
+  nav.style.backgroundColor = scrolled
+    ? 'rgba(7, 55, 99, 1)'
+    : 'transparent';
+
+
+  // 2 — Desktop-only behavior: change link and caret colors
+  if (isDesktop) {
+    const navbarLinks = nav.querySelectorAll('.nlink.top');
+    const carets = nav.querySelectorAll('svg path:not([fill="none"])');
+
+    if (scrolled) {
+      navbarLinks.forEach(el => (el.style.color = 'white'));
+      carets.forEach(path => path.setAttribute('stroke', 'white'));
+    } else {
+      navbarLinks.forEach(el => (el.style.color = 'rgb(28, 28, 28)'));
+      carets.forEach(path =>
+        path.setAttribute('stroke', 'rgb(28, 28, 28)')
+      );
+    }
   } else {
-    if (nav) nav.style.backgroundColor = 'transparent';
-    navbarLinks.forEach(el => el.style.color = 'rgb(28, 28, 28)');
-    carets.forEach(path => path.setAttribute('stroke', 'rgb(28, 28, 28)'));
+    const hamburger = document.getElementById('hamburger').querySelectorAll('svg path');
+    if (scrolled) {
+      hamburger.forEach(path => path.style.stroke = 'white');
+    } else {
+      hamburger.forEach(path => path.style.stroke = 'rgb(28, 28, 28)');
+
+    }
   }
 });
+
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -167,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('resize', () => {
     if (!isMobile()) {
       // On desktop: reset inline styles so CSS hover works
-      document.querySelectorAll('ul.VcS63b').forEach(ul => {
+      document.querySelectorAll('ul.sub').forEach(ul => {
         ul.style.display = '';
       });
       if (hamburger) hamburger.setAttribute('aria-expanded', 'false');

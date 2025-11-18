@@ -62569,6 +62569,16 @@ sentinel {
 /* ------------------- MOBILE STYLES ------------------- */
 @media (max-width: 767px) {
 
+  /* hide desktop nav */
+  #desktopNavContainer {
+    display: none !important;
+  }
+
+  /* shift siteHeader to right to make room for hamburger */
+  #siteHeader {
+    padding-left: 36px;
+  }
+
   /* Hamburger icon */
   #hamburger {
     color: white;
@@ -62577,6 +62587,9 @@ sentinel {
     outline: none;
     padding: 16px 12px;
     width: 48px;
+    position: absolute;
+    top: 0;
+    left: 0;
   }
 
   #hamburger svg {
