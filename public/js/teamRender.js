@@ -9,7 +9,6 @@ import {
   GoogleAuthProvider 
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-
 // Initialize Firebase app
 const app = initializeApp(config.firebase);
 
@@ -18,6 +17,27 @@ window.firebaseAuth = getAuth(app);
 
 // Initialize Auth provider
 const provider = new GoogleAuthProvider();
+
+function getNormalizedTeamParam() {
+  const urlParams = new URLSearchParams(window.location.search);
+  // default fallback 'default' if no team specified, lowercase for consistency
+  return (urlParams.get('team') || 'default').toLowerCase();
+}
+
+/**
+ * Check if localStorage is available and writable.
+ */
+function isLocalStorageAvailable() {
+  try {
+    const testKey = '__test__';
+    localStorage.setItem(testKey, '1');
+    localStorage.removeItem(testKey);
+    return true;
+  } catch (e) {
+    console.warn('LocalStorage not available:', e);
+    return false;
+  }
+}
 
 // Global helper
 function setLoading(loading, message = "Loading...") {
@@ -66,8 +86,7 @@ export async function renderTeamPage(data) {
   refreshBtn.style.display = data.isTeamPageEditor ? 'inline-block' : 'none';
 
   const team = data.teamObj || {};
-  const urlParams = new URLSearchParams(window.location.search);
-  const teamName = data.teamObj?.teamName || urlParams.get('team');
+  const teamName = data.teamObj?.teamName || getNormalizedTeamParam();
 
   title.innerText = team.teamName
   ? `${team.teamName} NET`
@@ -285,8 +304,7 @@ onAuthStateChanged(auth, async (user) => {
   // 1. Initial load (prevUser === null)
   // 2. User is logged in
   if (!justLoggedOut) {
-    const params = new URLSearchParams(window.location.search);
-    const team = params.get('team') || '';
+    const team = getNormalizedTeamParam();
 
     console.log('Loading backend for team:', team);
     await loadBackend(team, email);
@@ -370,7 +388,8 @@ async function loadBackend(team, email = '') {
   teamContent.style.display = 'block';
 
   // Check cache
-  const cached = getCachedData(team);
+  const cacheKey = team || 'teamLinks';
+  const cached = getCachedData(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     console.log('Using cached team page data:', cached.data);
     renderTeamPage(cached.data);
@@ -403,8 +422,7 @@ async function loadBackend(team, email = '') {
  */
 
 async function handleLoginSuccess() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const team = urlParams.get('team') || '';
+  const team = getNormalizedTeamParam();
   const currentEmail = currentUser?.email;
   const lastEmail = localStorage.getItem('lastUserEmail');
   const auth = window.firebaseAuth;
@@ -460,6 +478,7 @@ function setupAuthUI() {
 const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 
 function cacheData(team, data) {
+  if (!isLocalStorageAvailable()) return; // skip caching if not available
   const key = `teamData_${team}`;
   const payload = {
     timestamp: Date.now(),
@@ -476,6 +495,7 @@ function cacheData(team, data) {
 
 function getCachedData(team) {
   console.log('Current origin:', window.location.origin);
+  if (!isLocalStorageAvailable()) return null; // skip if localStorage not available
   const key = `teamData_${team}`;
   console.log('getCachedData(): checking key', key);
   console.log('Available localStorage keys:', Object.keys(localStorage));
@@ -584,8 +604,7 @@ async function init(user = currentUser) {
   }
 
   // --- BASIC PARAM SETUP ---
-  const urlParams = new URLSearchParams(window.location.search);
-  const team = urlParams.get('team') || '';
+  const team = getNormalizedTeamParam();
 
   if (!team) {
     console.log('init() skipped — no team param in URL.');
@@ -596,7 +615,9 @@ async function init(user = currentUser) {
   const effectiveEmail = user?.email || 'anonymous@public'; // default to anonymous
   console.log(`init() called — team=${team}, user=${effectiveEmail || 'anonymous'}`);
 
-  const cached = getCachedData(team);
+  // fallback cache key
+  const cacheKey = team || 'teamLinks';
+  const cached = getCachedData(cacheKey);
   console.log('getCachedData() returned:', cached);
 
   // --- CACHE FRESHNESS GUARD (skip redundant backend call) ---
@@ -630,7 +651,7 @@ async function init(user = currentUser) {
       console.log('Background refresh response:', fresh);
       if (fresh?.success) {
         console.log('Background refresh complete — updating cache and UI');
-        cacheData(team, fresh);
+        cacheData(cacheKey, fresh);
         console.log('Backend data:', fresh);
         renderTeamPage(fresh);
       } else {
@@ -654,7 +675,7 @@ async function init(user = currentUser) {
     const data = await callBackend({ team, email: effectiveEmail });
     console.log('Fresh backend response:', data);
     if (data?.success) {
-      cacheData(team, data);
+      cacheData(cacheKey, data);
       console.log('Backend data:', data);
       renderTeamPage(data);
     } else {
@@ -750,7 +771,7 @@ function attachDeleteHandlers() {
       const url = new URL(link.href);
       const action = url.searchParams.get('action');
       const id = url.searchParams.get('id');
-      const team = url.searchParams.get('team') || new URLSearchParams(window.location.search).get('team');
+      const team = getNormalizedTeamParam();
 
       if (action !== 'delete' || !id) {
         console.warn('Invalid delete link:', link.href);
@@ -796,8 +817,7 @@ function attachDeleteHandlers() {
  */
 async function refreshData() {
   const refreshBtn = document.getElementById('refreshBtn');
-  const urlParams = new URLSearchParams(window.location.search);
-  const team = urlParams.get('team') || '';
+  const team = getNormalizedTeamParam();
   if (!team) return;
 
   refreshBtn.disabled = true;
