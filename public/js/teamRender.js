@@ -369,15 +369,31 @@ async function loadBackend(team, email = '') {
   linksContent.style.display = 'none';
   teamContent.style.display = 'block';
 
+  // Check cache
+  const cached = getCachedData(team);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log('Using cached team page data:', cached.data);
+    renderTeamPage(cached.data);
+    setLoading(false);
+    attachRefreshListener();
+    return; // skip backend entirely
+  }
+
+  // No cache or stale → call backend
   try {
     const data = await callBackend({ page: 'team', team, email });
-    console.log('Backend data:', data)
-    renderTeamPage(data);
+    console.log('Fresh backend data:', data);
+    if (data?.success) {
+      cacheData(team, data);
+      renderTeamPage(data);
+    }
   } catch (err) {
     console.error('Error fetching team page:', err);
   } finally {
     setLoading(false);
+    attachRefreshListener();
   }
+
 }
 
 
@@ -600,13 +616,13 @@ async function init(user = currentUser) {
     console.log(`Using stale cached data for team "${team}" (background refresh will run).`);
     console.log('Backend data:', cached.data);
     console.log(cached);
-    renderTeamPage(cached.data || cached);
-    setLoading(false); // hide spinner quickly
-    attachRefreshListener();
-
-    // Non-blocking background refresh
-    showRefreshOverlay(true);
-    const hideTimer = setTimeout(() => showRefreshOverlay(false), 2000); // auto-hide overlay after 2s
+    const age = Date.now() - cached.timestamp;
+    if (age < MAX_CACHE_AGE) {
+      renderTeamPage(cached.data);
+      setLoading(false);
+      attachRefreshListener();
+      return; // stop, cache is fresh
+    }
 
     try {
       const effectiveEmail = currentUser?.email || '';
