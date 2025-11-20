@@ -182,6 +182,10 @@ function checkGroupMembership(groupEmail, userEmail) {
 
 
 function getRecentAnnouncements(teamObj) {
+  if (!teamObj) {
+    safeLog('getRecentAnnouncements', 'error', `186: no team object sent to getRecentAnnouncements`);
+    return;
+  }
   const data = updatesSheet.getDataRange().getValues();
 
   // Get header indexes
@@ -269,74 +273,12 @@ function renameFile(team, file, fileType, meetingDate) {
 }
 
 
-// prepends the team name to meeting minutes and ops plan files so they can be found later in the drive folder
-function onFormSubmitHandler2(e) {
-  Logger.log(`onFormSubmitHandler2`);
-  const sheetName = e.range.getSheet().getName();
-  Logger.log(`sheetName = ${sheetName}`);
-
-  // e.source is the Form object that triggered the event
-  const submittedFormId = e.source.getId();
-  Logger.log(`onFormSubmitHandler2 submittedFormId: ${submittedFormId}`);
-  Logger.log(`UPDATES_FORM_ID: ${UPDATES_FORM_ID}`);
-
-  if (submittedFormId !== UPDATES_FORM_ID) {
-    Logger.log('Submission ignored: Not from team updates form.');
-    return;
-  }
-
-  // File upload logic
-  const responses = e.namedValues;
-  const team = responses["Your Team"][0] || 'Unknown'; 
-  const fileType = responses["What do you want to update?"][0].includes('minutes') ? 'minutes' : responses["What do you want to update?"][0].includes('operations') ? 'ops' : '';
-  const meetingDate = responses["Date of meeting"][0] || '';
-  Logger.log(`team: ${team}, fileType: ${fileType}`);
-  safeLog('onFormSubmitHandler2', 'info', 'File upload logic', { team, fileType });
-
-  const minutesFolder = DriveApp.getFolderById(MINUTES_FOLDER_ID);
-  const opsFolder = DriveApp.getFolderById(OPS_FOLDER_ID);
-  const minutesFiles = minutesFolder.getFiles();
-  const opsFiles = opsFolder.getFiles();
-
-  if (fileType === 'minutes') {
-    while (minutesFiles.hasNext()) {
-      const file = minutesFiles.next();
-      // Logger.log('minutesFile');
-      // Logger.log(file.getName());
-      const fileName = file.getName();
-      safeLog('onFormSubmitHandler2', 'info', 'Minutes file upload', { fileName });
-
-      try {
-        renameFile(globalLookup(team).shortName, file, fileType, meetingDate)
-      } catch(err) {
-        safeLog('onFormSubmitHandler2', 'error', `renameFile: err: ${err}, team: ${team}, shortName: ${globalLookup(team).shortName}, file: ${file}, fileType: ${fileType}, meetingDate: ${meetingDate}` );
-      }
-
-      
-    }
-
-  } else if (fileType === 'ops') {
-    while (opsFiles.hasNext()) {
-      const file = opsFiles.next();
-      // Logger.log('opsFile');
-      // Logger.log(file.getName());
-
-      try {
-        renameFile(globalLookup(team).shortName, file, fileType)
-      } catch (err) {
-        safeLog('onFormSubmitHandler2', 'error', `renameFile: err: ${err}, team: ${team}, shortName: ${globalLookup(team).shortName}, file: ${file}, fileType: ${fileType}` );
-      }
-    }
-    
-    } else {
-    Logger.log('no fileType found');
-    safeLog('onFormSubmitHandler2', 'info', `no fileType found`);
-  }
-}
-
-
-
 function getLatestMinutesFiles(teamObj, folderId, maxFiles) {
+  Logger.log(`getLatestMinutesFiles`);
+  if (!teamObj) { 
+    safeLog('getLatestMinutesFiles', 'error', `279 no team object provided to getLatestMinutesFiles`);
+    return;
+  }  
   Logger.log(`getLatestMinutesFiles`);
   const teamPrefix = `${teamObj.shortName}_minutes`;
   Logger.log(`teamPrefix: ${teamPrefix}`);
@@ -370,7 +312,58 @@ function getLatestOpsFile(teamObj, folderId) {
   return matchingFile || null; // Return the matching file or null if none found
 }
 
+
+/**
+ * Get the latest banner for a team from a 2D sheet array.
+ * 
+ * @param {Array[]} values - 2D array from the sheet (including header row).
+ * @param {string} team - team name to match.
+ * @returns {{ fileUrl: string, altText: string } | null}
+ */
+function getBanner(teamObj) {
+  safeLog('getBanner', 'info', `teamObj.shortName: ${teamObj.shortName}, teamObj.teamName: ${teamObj.teamName}`);
+  const values = updatesSheet.getDataRange().getValues();
+  if (!values || values.length === 0) return null;
+
+  const headers = values[0];
+  const rows = values.slice(1);
+
+  // Column indices
+  const tsCol = headers.indexOf("Timestamp");
+  const teamCol = headers.indexOf("Your Team");
+  const urlCol = headers.indexOf("BannerPublicURL");
+  const altCol = headers.indexOf("Image alt text (brief image description for screen readers)");
+
+  if (tsCol < 0 || teamCol < 0 || urlCol < 0 || altCol < 0) {
+    safeLog('getBanner', 'error', `"Missing required column(s) in sheet`);
+    console.error("Missing required column(s) in sheet");
+    return null;
+  }
+
+  // Filter rows for this team with a BannerPublicURL
+  const matches = rows.filter(row =>
+    (row[teamCol] || "").trim() === teamObj.teamName &&
+    (row[urlCol] || "").toString().trim() !== ""
+  );
+
+  if (matches.length === 0) return null;
+
+  // Sort by timestamp desc
+  matches.sort((a, b) => new Date(b[tsCol]) - new Date(a[tsCol]));
+
+  const latest = matches[0];
+
+  safeLog('getBanner', 'info', `latest: ${latest}`);
+
+  return {
+    fileUrl: latest[urlCol],
+    altText: latest[altCol] || ""
+  };
+}
+
+
 function getTeamLinks() {
+  safeLog('getTeamLinks', 'info', `function called`);
   const sheet = teamSheet;
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
@@ -381,7 +374,7 @@ function getTeamLinks() {
     name: row[teamIndex],
     shortName: row[shortNamIndex]
   }));
-
+  safeLog('getTeamLinks', 'info', `${links}`);
   return links;
 }
 

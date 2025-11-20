@@ -224,7 +224,10 @@ p {
   }
 }
 
-
+/* ===== BANNER ===== */
+#bannerSection {
+  display: none;
+}
 
 /* ===== ANNOUNCEMENTS ===== */
 .announcements .cont {
@@ -363,10 +366,16 @@ p {
   cursor: not-allowed;
 }
 
+#loginBtn {
+  background-color: #df683a !important;
+}
+
 #userInfo {
   margin: 10px 0;
   font-size: 12px;
   text-align: center;
+  border-bottom: 1px solid #ddd;
+    padding-bottom: 20px;
 }
 
 /* ===== LOADING SPINNER ===== */
@@ -430,9 +439,9 @@ p {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 0.75rem 1rem;
+  padding: 0.2rem .2rem;
   height: auto;
-  min-height: 60px;
+  min-height: 30px;
   border: 1px solid #ccc;
   background-color: #ddd;
   font-weight: 400;

@@ -20,8 +20,8 @@ const provider = new GoogleAuthProvider();
 
 function getNormalizedTeamParam() {
   const urlParams = new URLSearchParams(window.location.search);
-  // default fallback 'default' if no team specified, lowercase for consistency
-  return (urlParams.get('team') || 'default').toLowerCase();
+  // default fallback empty string if no team specified
+  return (urlParams.get('team') || '').toLowerCase();
 }
 
 /**
@@ -71,7 +71,8 @@ export async function renderTeamPage(data) {
     eventsDiv,
     opsDiv,
     groupDiv,
-    driveDiv
+    driveDiv,
+    bannerDiv
   ] = await Promise.all([
     waitForElement('#pageTitle'),
     waitForElement('#announcements'),
@@ -79,7 +80,8 @@ export async function renderTeamPage(data) {
     waitForElement('#events'),
     waitForElement('#ops'),
     waitForElement('#group'),
-    waitForElement('#drive')
+    waitForElement('#drive'),
+    waitForElement('#banner')
   ]);
 
   const refreshBtn = document.getElementById('refreshBtn');
@@ -97,6 +99,21 @@ export async function renderTeamPage(data) {
   // if (sidebarHeader && data.teamObj?.teamName) {
   //   sidebarHeader.textContent = `${data.teamObj.teamName} NET`;
   // }  
+
+  // --- Banner ---
+  bannerDiv.innerHTML = '';
+  if (data.banner && data.banner.fileUrl) {
+    console.log('rendering banner');
+    console.log(`config.backendUrl: ${config.backendUrl}`);
+    console.log(`data.banner.fileUrl: ${data.banner.fileUrl}`);
+
+    const bannerSection = document.getElementById('bannerSection');
+    bannerSection.style.display = 'block';
+    bannerDiv.innerHTML = `
+      <div class="bannerImgCont">
+        <img class="bannerImg" src="${data.banner.fileUrl}" alt="${data.banner.altText}">
+      </div>`;
+    }
 
   // --- Announcements ---
   announcementsDiv.innerHTML = '';
@@ -403,7 +420,7 @@ async function loadBackend(team, email = '') {
     const data = await callBackend({ page: 'team', team, email });
     console.log('Fresh backend data:', data);
     if (data?.success) {
-      cacheData(team, data);
+      cacheData(cacheKey, data);
       renderTeamPage(data);
     }
   } catch (err) {

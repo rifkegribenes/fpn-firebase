@@ -26,7 +26,7 @@
               <nav id="desktopNav">
                 <ul>
                   <li class="top"><a class="nlink top" href="https://sites.google.com/friendsofportlandnet.org/teamspace/home">Home</a></li>
-                  <li class="top"><a class="nlink top" href="https://sites.google.com/friendsofportlandnet.org/teamspace/teams">Teams</a></li>
+                  <li class="top"><a class="nlink top" href="https://friends-of-portland-net.web.app/">Teams</a></li>
                   <li class="top">
                     <a class="nlink top" href="https://sites.google.com/friendsofportlandnet.org/teamspace/learning">Learning</a>
                     <div class="submenu-caret" title="Expand/Collapse">
@@ -109,6 +109,12 @@
           <!-- ===== MAIN CONTENT ===== -->
           <div class="mainContent">
             <div id="editor"></div>
+            <section id="bannerSection" class="block banner">
+              <h3 class="blockhead"></h3>
+              <div id="banner" class="cont">
+                
+              </div>
+            </section>
 
             <section class="block announcements">
               <h3 class="blockhead">Announcements</h3>
@@ -130,6 +136,18 @@
               <p class="qlP"><a href="https://app.betterimpact.com/" target="_blank">Log hours on MIP</a></p>
             </div>
 
+            <!-- ===== ADMIN / FOOTER ===== -->
+              <div id="content"></div>
+
+              <div id="adminButtons">
+                <div id="teamUpdateContainer"></div>
+                <button id="refreshBtn" hidden>Refresh data</button>
+                <button id="loginBtn">Login</button>
+                <button id="logoutBtn" hidden>Logout</button>
+              </div>
+
+              <div id="userInfo"></div>
+
             <section class="sidebar-section minutes">
               <h4>Meeting Minutes</h4>
               <div id="minutes" class="cont"></div>
@@ -150,17 +168,7 @@
               <div id="drive" class="cont"></div>
             </section>
 
-            <!-- ===== ADMIN / FOOTER ===== -->
-              <div id="content"></div>
-
-              <div id="adminButtons">
-                <div id="teamUpdateContainer"></div>
-                <button id="refreshBtn" hidden>Refresh data</button>
-                <button id="loginBtn">Login</button>
-                <button id="logoutBtn" hidden>Logout</button>
-              </div>
-
-              <div id="userInfo"></div>
+            
             
           </aside>
         </div>
