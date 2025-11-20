@@ -120,13 +120,16 @@ function doGet(e) {
       page: 'team',
       team,
       teamObj,
-      isAdmin,
-      isTeamLead,
-      isTeamPageEditor,
       announcements,
       minutes,
       opsPlanLink,
       banner,
+      auth: {
+        email: effectiveEmail,
+        isAdmin,
+        isTeamLead,
+        isTeamPageEditor
+      },
       debug: {
         authMode,
         activeUserEmail,

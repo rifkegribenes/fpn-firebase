@@ -87,10 +87,10 @@ export async function renderTeamPage(data) {
   ]);
 
   const refreshBtn = document.getElementById('refreshBtn');
-  refreshBtn.style.display = data.isTeamPageEditor ? 'inline-block' : 'none';
+  refreshBtn.style.display = data.auth.isTeamPageEditor ? 'inline-block' : 'none';
 
-  const team = data.teamObj || {};
-  const teamName = data.teamObj?.teamName || getNormalizedTeamParam();
+  const team = data?.teamData?.teamObj || {};
+  const teamName = data?.teamData?.teamObj?.teamName || getNormalizedTeamParam();
 
   title.innerText = team.teamName
   ? `${team.teamName} NET`
@@ -98,51 +98,51 @@ export async function renderTeamPage(data) {
 
   // Set sidebar header
   // const sidebarHeader = document.getElementById('sidebarHeader');
-  // if (sidebarHeader && data.teamObj?.teamName) {
-  //   sidebarHeader.textContent = `${data.teamObj.teamName} NET`;
+  // if (sidebarHeader && data.teamData?.teamObj?.teamName) {
+  //   sidebarHeader.textContent = `${data.teamData?.teamObj?.teamName} NET`;
   // }  
 
   // --- Banner ---
   bannerDiv.innerHTML = '';
-  if (data.banner && data.banner.fileUrl) {
+  if (data?.teamData?.banner && data?.teamData?.banner?.fileUrl) {
     console.log('rendering banner');
     console.log(`config.backendUrl: ${config.backendUrl}`);
-    console.log(`data.banner.fileUrl: ${data.banner.fileUrl}`);
+    console.log(`data.teamData?.banner.fileUrl: ${data?.teamData?.banner?.fileUrl}`);
 
     const bannerSection = document.getElementById('bannerSection');
     bannerSection.style.display = 'block';
     bannerDiv.innerHTML = `
       <div class="bannerImgCont">
-        <img class="bannerImg" src="${data.banner.fileUrl}" alt="${data.banner.altText}">
+        <img class="bannerImg" src="${data?.teamData?.banner?.fileUrl}" alt="${data?.teamData?.banner?.altText}">
       </div>`;
     }
 
   // --- Team Lead Email ---  
   teamLeadEmailDiv.innerHTML = '';
-  if (data.teamObj.tlAssigned) {
-    console.log(`team lead for ${data.teamObj.teamName} is assigned, rendering tl email`);
+  if (data?.teamData?.teamObj?.tlAssigned) {
+    console.log(`team lead for ${data?.teamData?.teamObj?.teamName} is assigned, rendering tl email`);
     teamLeadEmailDiv.style.display = 'block';
     teamLeadEmailDiv.innerHTML = 
       `<h4 id="tlhead">Team Lead</h4>
       <ul class="icon-list">
-        <li class="icon-user">${data.teamObj.tlName}</li>
-        <li class="icon-envelope"><a href="mailto:${data.teamObj.tlEmail}">${data.teamObj.tlEmail.toLowerCase()}</a></li>
+        <li class="icon-user">${data?.teamData?.teamObj?.tlName}</li>
+        <li class="icon-envelope"><a href="mailto:${data?.teamData?.teamObj?.tlEmail}">${data?.teamData?.teamObj?.tlEmail.toLowerCase()}</a></li>
       </ul>`
   } else {
-    console.log(`no team lead assigned for ${data.teamObj.teamName}`);
+    console.log(`no team lead assigned for ${data?.teamData?.teamObj?.teamName}`);
   }
 
   // --- Announcements ---
   announcementsDiv.innerHTML = '';
-  if (data.announcements?.length) {
+  if (data?.teamData?.announcements?.length) {
     console.log('rendering announcements');
-    data.announcements.forEach(a => {
+    data?.teamData?.announcements.forEach(a => {
       const div = document.createElement('div');
       div.className = 'announcement-item';
 
       let adminBlock = '';
-      if (data.isTeamPageEditor) {
-        const deleteURLWithParams = `${a.deleteURL}&team=${data.teamObj.shortName}`;
+      if (data.auth.isTeamPageEditor) {
+        const deleteURLWithParams = `${a.deleteURL}&team=${data.teamData?.teamObj.shortName}`;
         adminBlock = `
           <div class="announcement-admin links">
             <a href="${a.editURL}" target="_blank" class="edit-link">Edit</a>
@@ -166,10 +166,10 @@ export async function renderTeamPage(data) {
 
   // --- Minutes ---
   minutesDiv.innerHTML = '';
-  if (data.minutes?.length) {
+  if (data?.teamData?.minutes?.length) {
     const ul = document.createElement('ul');
     ul.classList.add('icon-list');
-    data.minutes.forEach(file => {
+    data?.teamData?.minutes.forEach(file => {
       const li = document.createElement('li');
       li.classList.add('icon-pdf')
       const createdDateStr = file.createdTime || null;
@@ -200,9 +200,9 @@ export async function renderTeamPage(data) {
 
   eventsDiv.innerHTML = '';
 
-  if (data.teamObj?.teamCal) {
+  if (data?.teamData?.teamObj?.teamCal) {
     // The backend already provides a full embed URL (e.g., https://calendar.google.com/calendar/embed?...).
-    const baseUrl = data.teamObj.teamCal;
+    const baseUrl = data.teamData?.teamObj.teamCal;
 
     // Add mode parameters for different display types
     const monthViewUrl = baseUrl.includes('mode=')
@@ -235,15 +235,15 @@ export async function renderTeamPage(data) {
       </div>
     `;
   } else {
-    eventsDiv.innerHTML = `<p>No calendar found for ${data.teamObj?.teamName}.</p>`;
+    eventsDiv.innerHTML = `<p>No calendar found for ${data.teamData?.teamObj?.teamName}.</p>`;
   }
 
 
 
   // Operations Plan
   opsDiv.innerHTML = '';
-  if (data.opsPlanLink) {
-    const file = data.opsPlanLink;
+  if (data?.teamData?.opsPlanLink) {
+    const file = data.teamData?.opsPlanLink;
     // console.log(`opsPlan`, file);
     const createdDateStr = file.createdTime || null;
     let formattedDate = 'Unknown date';
@@ -274,10 +274,10 @@ export async function renderTeamPage(data) {
   // --- Team Update Link (conditionally rendered) ---
   updateContainer.innerHTML = ''; // clear previous content
 
-  if (data.isTeamPageEditor && data.teamObj?.teamName) {
+  if (data?.auth?.isTeamPageEditor && data?.teamData?.teamObj?.teamName) {
     const updateLink = document.createElement('a');
     updateLink.id = 'teamUpdateLink';
-    updateLink.href = `https://docs.google.com/forms/d/e/1FAIpQLSe9TU8URPswEVELyy9jOImY2_2vJ9OOE7O8L5JlNUuiJzPQYQ/viewform?usp=pp_url&entry.1458714000=${encodeURIComponent(data.teamObj.teamName)}`;
+    updateLink.href = `https://docs.google.com/forms/d/e/1FAIpQLSe9TU8URPswEVELyy9jOImY2_2vJ9OOE7O8L5JlNUuiJzPQYQ/viewform?usp=pp_url&entry.1458714000=${encodeURIComponent(data.teamData?.teamObj.teamName)}`;
     updateLink.target = '_blank';
     updateLink.className = 'responsiveLink';
     updateLink.textContent = 'Update page';
@@ -306,19 +306,27 @@ function updateAuthUI(user) {
       attachRefreshListener(); 
     }
     if (teamUpdateContainer) teamUpdateContainer.style.display = 'block';
-    // Optionally show edit/delete links (already handled in renderTeamPage)
+    // Edit/delete links already handled in renderTeamPage
   } else {
     // Logged out
     if (userInfo) userInfo.textContent = 'Not logged in';
     if (loginBtn) loginBtn.hidden = false;
     if (logoutBtn) logoutBtn.hidden = true;
+
+    // Hide admin-only UI
     if (refreshBtn) refreshBtn.style.display = 'none';
     if (teamUpdateContainer) teamUpdateContainer.style.display = 'none';
-
-    // Hide all edit links
     document.querySelectorAll('.announcement-admin').forEach(el => el.style.display = 'none');
+
+    // Update cached auth state only (lastUserEmail), do NOT touch team data
+    if (isLocalStorageAvailable()) {
+      localStorage.setItem('lastUserEmail', '');
+      // Keep `teamData_*` cache intact
+    }
   }
 }
+
+
 
 let currentUser = null;
 
@@ -330,8 +338,8 @@ onAuthStateChanged(auth, async (user) => {
   const email = user?.email || '';
   console.log('onAuthStateChanged →', email || 'anonymous');
 
-  // Always update UI
-  updateAuthUI(user);
+  currentUser = user;
+  updateAuthUI(currentUser);
 
   // Detect “just logged out”: previously logged in, now null
   const justLoggedOut = prevUser && !user;
@@ -342,6 +350,13 @@ onAuthStateChanged(auth, async (user) => {
   if (!justLoggedOut) {
     const team = getNormalizedTeamParam();
 
+    // --- CLEAR CACHE ON LOGIN ---
+    if (user) {
+      console.log('Clearing cached team data for fresh load...');
+      localStorage.removeItem(`teamData_${team}`);
+      localStorage.removeItem('teamData_teamLinks'); // if used
+    }
+
     console.log('Loading backend for team:', team);
     await loadBackend(team, email);
   } else {
@@ -351,6 +366,7 @@ onAuthStateChanged(auth, async (user) => {
   // Update prevUser for next auth change
   prevUser = user;
 });
+
 
 
 
@@ -384,7 +400,7 @@ async function loadBackend(team, email = '') {
         try {
           const fresh = await callBackend();
           if (fresh?.success && Array.isArray(fresh.teamLinks)) {
-            cacheData(pseudoTeamKey, fresh);
+            cacheData(pseudoTeamKey, fresh, fresh.auth);
             renderTeamLinks(fresh.teamLinks);
             console.log('Background refresh of teamLinks complete');
           }
@@ -401,7 +417,7 @@ async function loadBackend(team, email = '') {
     try {
       const fresh = await callBackend();
       if (fresh?.success && Array.isArray(fresh.teamLinks)) {
-        cacheData(pseudoTeamKey, fresh);
+        cacheData(pseudoTeamKey, fresh, fresh.auth);
         renderTeamLinks(fresh.teamLinks);
       } else {
         console.warn('No team links found from backend');
@@ -428,19 +444,27 @@ async function loadBackend(team, email = '') {
   const cached = getCachedData(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     console.log('Using cached team page data:', cached.data);
-    renderTeamPage(cached.data);
+
+    const safeData = {
+      teamData: cached.data.teamData,
+      auth: cached.data.auth || { email: '', isAdmin: false, isTeamLead: false, isTeamPageEditor: false }
+    };
+
+    renderTeamPage(safeData);
     setLoading(false);
     attachRefreshListener();
     return; // skip backend entirely
-  }
+}
+
 
   // No cache or stale → call backend
   try {
     const data = await callBackend({ page: 'team', team, email });
     console.log('Fresh backend data:', data);
     if (data?.success) {
-      cacheData(cacheKey, data);
-      renderTeamPage(data);
+      cacheData(cacheKey, data, data.auth);
+      const safeData = { teamData: data, auth: data.auth || {} };
+      renderTeamPage(safeData);
     }
   } catch (err) {
     console.error('Error fetching team page:', err);
@@ -491,7 +515,11 @@ async function handleLoginSuccess() {
     );
   }
 
-  // Re-init app with current user
+  // --- Force backend reload for this team with current user ---
+  // This ensures cached data is updated with correct admin/editor flags
+  await loadBackend(team, currentUser?.email);
+
+  // Re-init app with current user 
   await init(currentUser);
 }
 
@@ -513,14 +541,27 @@ function setupAuthUI() {
 
 const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 
-function cacheData(team, data) {
-  if (!isLocalStorageAvailable()) return; // skip caching if not available
+/**
+ * Caches team data along with optional auth info.
+ * @param {string} team - team key
+ * @param {object} data - backend response for the team
+ * @param {object} [auth] - optional auth info { email, isAdmin, isTeamLead, isTeamPageEditor }
+ */
+function cacheData(team, data, auth) {
+  if (!isLocalStorageAvailable()) return; // skip caching if localStorage not available
   const key = `teamData_${team}`;
+
+  // Wrap the data along with auth info (if provided)
   const payload = {
     timestamp: Date.now(),
-    data, // keep wrapped for backward compatibility
+    data: {
+      teamData: data,
+      auth: auth || null, // store auth block if passed
+    }
   };
+
   console.log(`cacheData(): writing to ${key} —`, payload);
+
   try {
     localStorage.setItem(key, JSON.stringify(payload));
     console.log(`Cached data for team "${team}" at ${new Date(payload.timestamp).toLocaleTimeString()}`);
@@ -659,14 +700,16 @@ async function init(user = currentUser) {
   // --- CACHE FRESHNESS GUARD (skip redundant backend call) ---
   const MAX_CACHE_AGE = 5 * 60 * 1000; // 5 minutes validity
   if (cached && cached.timestamp && Date.now() - cached.timestamp < MAX_CACHE_AGE) {
-    console.log(`Cache is fresh (age=${Math.round((Date.now() - cached.timestamp) / 1000)}s) — using cache only.`);
-    console.log('Backend data:', cached.data);
-    console.log(cached);
-    renderTeamPage(cached.data || cached); // support both old/new cache formats
-    setLoading(false);
-    attachRefreshListener();
-    return;
-  }
+  const safeData = {
+    teamData: cached.data.teamData || cached.data, // fallback for old format
+    auth: cached.data.auth || { email: '', isAdmin: false, isTeamLead: false, isTeamPageEditor: false }
+  };
+  renderTeamPage(safeData);
+  setLoading(false);
+  attachRefreshListener();
+  return;
+}
+
 
   // --- CASE 1: Cached data exists (stale but renderable) ---
   if (cached) {
@@ -675,7 +718,12 @@ async function init(user = currentUser) {
     console.log(cached);
     const age = Date.now() - cached.timestamp;
     if (age < MAX_CACHE_AGE) {
-      renderTeamPage(cached.data);
+      const safeData = {
+        teamData: cached.data.teamData,
+        auth: cached.data.auth || { email: '', isAdmin: false, isTeamLead: false, isTeamPageEditor: false }
+      };
+
+      renderTeamPage(safeData);
       setLoading(false);
       attachRefreshListener();
       return; // stop, cache is fresh
@@ -686,10 +734,9 @@ async function init(user = currentUser) {
       const fresh = await callBackend({ team, email: effectiveEmail });
       console.log('Background refresh response:', fresh);
       if (fresh?.success) {
-        console.log('Background refresh complete — updating cache and UI');
-        cacheData(cacheKey, fresh);
-        console.log('Backend data:', fresh);
-        renderTeamPage(fresh);
+        cacheData(cacheKey, fresh, fresh.auth);
+        const safeData = { teamData: fresh, auth: fresh.auth || {} };
+        renderTeamPage(safeData);
       } else {
         console.warn('Background refresh returned unsuccessful response:', fresh);
       }
@@ -711,9 +758,11 @@ async function init(user = currentUser) {
     const data = await callBackend({ team, email: effectiveEmail });
     console.log('Fresh backend response:', data);
     if (data?.success) {
-      cacheData(cacheKey, data);
-      console.log('Backend data:', data);
-      renderTeamPage(data);
+      cacheData(cacheKey, data, data.auth);
+      const safeData = { teamData: data, auth: data.auth || {} };
+      console.log('backend data');
+      console.log(safeData);
+      renderTeamPage(safeData);
     } else {
       console.warn('Backend call returned unsuccessful response:', data);
     }
