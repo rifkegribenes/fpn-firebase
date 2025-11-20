@@ -208,6 +208,85 @@ p {
   text-decoration: underline;
 }
 
+#teamLeadEamil {
+  display: none;
+}
+
+#tlhead {
+  margin-top: -10px !important;
+}
+
+.tlinfo {
+  font-size: 12px;
+}
+
+ul.icon-list {
+  padding-left: 0;
+  margin-left: 0;
+}
+
+ul.icon-list li {
+  list-style: none;
+  position: relative;
+  padding-left: 26px;
+  line-height: 1.4em;
+  margin-bottom: 5px;
+}
+
+/* USER icon */
+ul li.icon-user::before {
+  font-family: "Font Awesome 5 Free";
+  content: "\f007";      /* user */
+  font-weight: 900;
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 14px;
+}
+
+/* ENVELOPE icon */
+ul li.icon-envelope::before {
+  font-family: "Font Awesome 5 Free";
+  content: "\f0e0";      /* envelope */
+  font-weight: 900;
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 14px;
+}
+
+/* PDF icon */
+ul li.icon-pdf::before {
+  font-family: "Font Awesome 5 Free";          
+  content: "\f1c1";          /* pdf */
+  font-weight: 900;
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 14px;
+}
+
+/* GROUP icon */
+ul li.icon-group::before {
+  font-family: "Font Awesome 5 Free";
+  content: "\f0c0";      /* group */
+  font-weight: 900;
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 14px;
+}
+
+ul.icon-list li.icon-drive {
+  padding-left:0;
+}
+
+ul.icon-list li.icon-drive i {
+  margin-right: 10px;
+  font-size: 14px;
+  vertical-align: middle;
+}
+
 /* --- Mobile stacking fix --- */
 @media (max-width: 768px) {
   .pcContainer {
@@ -227,6 +306,32 @@ p {
 /* ===== BANNER ===== */
 #bannerSection {
   display: none;
+}
+
+#banner {
+  margin-bottom:10px;
+}
+
+img.bannerImg {
+  width: 100%;          
+  max-width: 850px;     
+  height: 300px; 
+  max-height: 300px;     
+  object-fit: cover;   
+  object-position: center center; 
+  display: block;      
+}
+
+@media (max-width: 768px) {
+  #banner {
+    margin-top:-10px;
+    margin-bottom:0px;
+  }
+
+  img.bannerImg {  
+    height: 200px; 
+    max-height: 200px;     
+  }
 }
 
 /* ===== ANNOUNCEMENTS ===== */
@@ -297,7 +402,7 @@ p {
 .calendar-view {
   width: 100%;
   max-width: 800px;
-  height: 600px;
+  height: 300px;
   border: 0;
 }
 
@@ -311,7 +416,7 @@ p {
   }
   .calendar-mobile {
     display: block;
-    height: 500px;
+    height: 300px;
   }
 }
 

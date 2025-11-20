@@ -529,6 +529,7 @@ function globalLookup(team) {
       const district = String(r[dIdx] || '').trim();
       const tlEmail = String(r[lIdx] || '').trim();
       const tlAssigned = !!r[aIdx] && !!r[aeIdx]; // team lead is assigned if values in these two columns are not blank
+      const tlName = String(r[aIdx] || '').trim();
       const teamCal = String(r[cIdx] || '').trim();
       const teamDrive = String(r[drIdx] || '').trim();
       const teamObj = {
@@ -539,6 +540,7 @@ function globalLookup(team) {
         district,
         tlEmail,
         tlAssigned,
+        tlName,
         teamCal,
         teamDrive
       };

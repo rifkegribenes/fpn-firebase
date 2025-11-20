@@ -72,7 +72,8 @@ export async function renderTeamPage(data) {
     opsDiv,
     groupDiv,
     driveDiv,
-    bannerDiv
+    bannerDiv,
+    teamLeadEmailDiv
   ] = await Promise.all([
     waitForElement('#pageTitle'),
     waitForElement('#announcements'),
@@ -81,7 +82,8 @@ export async function renderTeamPage(data) {
     waitForElement('#ops'),
     waitForElement('#group'),
     waitForElement('#drive'),
-    waitForElement('#banner')
+    waitForElement('#banner'),
+    waitForElement('#teamLeadEmail')
   ]);
 
   const refreshBtn = document.getElementById('refreshBtn');
@@ -114,6 +116,21 @@ export async function renderTeamPage(data) {
         <img class="bannerImg" src="${data.banner.fileUrl}" alt="${data.banner.altText}">
       </div>`;
     }
+
+  // --- Team Lead Email ---  
+  teamLeadEmailDiv.innerHTML = '';
+  if (data.teamObj.tlAssigned) {
+    console.log(`team lead for ${data.teamObj.teamName} is assigned, rendering tl email`);
+    teamLeadEmailDiv.style.display = 'block';
+    teamLeadEmailDiv.innerHTML = 
+      `<h4 id="tlhead">Team Lead</h4>
+      <ul class="icon-list">
+        <li class="icon-user">${data.teamObj.tlName}</li>
+        <li class="icon-envelope"><a href="mailto:${data.teamObj.tlEmail}">${data.teamObj.tlEmail.toLowerCase()}</a></li>
+      </ul>`
+  } else {
+    console.log(`no team lead assigned for ${data.teamObj.teamName}`);
+  }
 
   // --- Announcements ---
   announcementsDiv.innerHTML = '';
@@ -151,8 +168,10 @@ export async function renderTeamPage(data) {
   minutesDiv.innerHTML = '';
   if (data.minutes?.length) {
     const ul = document.createElement('ul');
+    ul.classList.add('icon-list');
     data.minutes.forEach(file => {
       const li = document.createElement('li');
+      li.classList.add('icon-pdf')
       const createdDateStr = file.createdTime || null;
       let formattedDate = 'Unknown date';
       let mtgDateParsed;
@@ -235,7 +254,7 @@ export async function renderTeamPage(data) {
     const linkText = `${team.teamName} Operations Plan`;
     const url = `https://drive.google.com/file/d/${file.id}/view`;
     // console.log(linkText, url);
-    opsDiv.innerHTML = `<ul><li>
+    opsDiv.innerHTML = `<ul class="icon-list"><li class="icon-pdf">
       <a href="${url}" target="_blank">
         ${linkText}
       </a></li></ul>`;
@@ -244,11 +263,11 @@ export async function renderTeamPage(data) {
   }
 
   groupDiv.innerHTML = team.groupEmail
-    ? `<ul><li><a href="https://groups.google.com/a/friendsofportlandnet.org/g/${team.shortName}" target="_blank">${team.teamName} Google Group</a></li></ul>`
+    ? `<ul class="icon-list"><li class="icon-group"><a href="https://groups.google.com/a/friendsofportlandnet.org/g/${team.shortName}" target="_blank">${team.teamName} Google Group</a></li></ul>`
     : `<p>No Google group found for ${team.teamName}.</p>`;
 
   driveDiv.innerHTML = team.teamDrive
-    ? `<ul><li><a href=${team.teamDrive}>${team.teamName} Documents</a></li></ul>`
+    ? `<ul class="icon-list"><li class="icon-drive"><i class="fab fa-google-drive"></i><a href=${team.teamDrive}>${team.teamName} Documents</a></li></ul>`
     : `<p>Shared Drive for ${team.teamName} has not been set up yet.</p>`;
 
 
