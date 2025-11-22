@@ -113,6 +113,36 @@ function doGet(e) {
       return HtmlService.createHtmlOutput(html);
     }
 
+    if (action === 'deleteBanner') {
+      const fileUrl = e.parameter.fileUrl;
+      safeLog('doGet', 'info', `Attempting banner delete for team: ${team}, fileUrl: ${fileUrl}`);
+
+      let deleted = false;
+      try {
+        deleted = deleteBanner(fileUrl);
+      } catch (err) {
+        safeLog('doGet', 'error', `deleteBanner error, team: ${team}, error: ${err.message}`);
+      }
+
+      const message = deleted
+        ? '✅ Banner deleted successfully.'
+        : '❌ Failed to delete banner.';
+
+      const html = `
+        <html>
+          <head><title>Delete Banner</title></head>
+          <body style="font-family: Lato, sans-serif; padding: 20px;">
+            <h2>${message}</h2>
+            <p>You can now close this tab and refresh the team page.</p>
+          </body>
+        </html>
+      `;
+
+      return HtmlService.createHtmlOutput(html);
+    }
+
+
+
     // --- Standard JSON/JSONP response ---
     const responseData = {
       success: true,

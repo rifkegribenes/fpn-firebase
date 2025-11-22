@@ -370,11 +370,10 @@ img.bannerImg {
   margin-top: 4px;
 }
 
-.announcement-item .links a {
+.announcement-item .links a, #banner a {
   font-size: 0.8rem;
   font-weight: normal;
   color: rgba(7, 55, 99, 1);
-  margin-right: 8px;
   text-decoration: none;
 }
 

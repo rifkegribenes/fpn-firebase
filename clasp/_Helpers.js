@@ -866,3 +866,20 @@ function deleteFormResponse(responseId) {
     return false;
   }
 }
+
+function deleteBanner(fileUrl) {
+  const sheet = updatesSheet;
+  const data = sheet.getDataRange().getValues();
+  let found = false;
+
+  for (let i = data.length - 1; i >= 1; i--) { // skip header row
+    if (data[i].includes(fileUrl)) {
+      sheet.deleteRow(i + 1); // Sheet rows are 1-indexed
+      Logger.log(`Deleted row ${i + 1} containing ${fileUrl}`);
+      found = true;
+    }
+  }
+
+  return found; 
+}
+

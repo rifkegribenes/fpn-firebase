@@ -73,6 +73,7 @@ export async function renderTeamPage(data) {
     groupDiv,
     driveDiv,
     bannerDiv,
+    bannerSection,
     teamLeadEmailDiv
   ] = await Promise.all([
     waitForElement('#pageTitle'),
@@ -83,6 +84,7 @@ export async function renderTeamPage(data) {
     waitForElement('#group'),
     waitForElement('#drive'),
     waitForElement('#banner'),
+    waitForElement('#bannerSection'),
     waitForElement('#teamLeadEmail')
   ]);
 
@@ -104,18 +106,40 @@ export async function renderTeamPage(data) {
 
   // --- Banner ---
   bannerDiv.innerHTML = '';
-  if (data?.teamData?.banner && data?.teamData?.banner?.fileUrl) {
-    console.log('rendering banner');
-    console.log(`config.backendUrl: ${config.backendUrl}`);
-    console.log(`data.teamData?.banner.fileUrl: ${data?.teamData?.banner?.fileUrl}`);
+  const bannerData = data?.teamData?.banner || data?.banner;
+  console.log('bannerDiv:', bannerDiv);
 
-    const bannerSection = document.getElementById('bannerSection');
+  if (bannerData && bannerData.fileUrl) {
+    console.log('rendering banner');
     bannerSection.style.display = 'block';
     bannerDiv.innerHTML = `
       <div class="bannerImgCont">
-        <img class="bannerImg" src="${data?.teamData?.banner?.fileUrl}" alt="${data?.teamData?.banner?.altText}">
-      </div>`;
+        <img class="bannerImg" src="${bannerData.fileUrl}" alt="${bannerData.altText}">
+      </div>
+    `;
+
+    // Add admin links after the image
+    if (data.auth.isTeamPageEditor) {
+      const bannerImg = bannerDiv.querySelector('img.bannerImg'); // query inside bannerDiv
+      const currentFileUrl = bannerImg ? bannerImg.src : null;
+      const currentUserEmail = data.auth.email || '';
+
+      if (currentFileUrl) {
+        const deleteBannerURL = `${config.backendUrl}?team=${teamName}&email=${currentUserEmail}&action=deleteBanner&fileUrl=${encodeURIComponent(currentFileUrl)}`;
+        const bannerAdminHTML = `
+          <div class="banner-admin links" style="margin-top: 8px; font-size: 0.9em;">
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSe9TU8URPswEVELyy9jOImY2_2vJ9OOE7O8L5JlNUuiJzPQYQ/viewform?usp=pp_url&entry.1458714000=${encodeURIComponent(teamName)}" target="_blank" class="edit-link">New Image</a>
+            &nbsp;|&nbsp;
+            <a href="${deleteBannerURL}" target="_blank" class="delete-link">Delete</a>
+          </div>
+        `;
+        bannerDiv.insertAdjacentHTML('beforeend', bannerAdminHTML);
+      }
     }
+  }
+
+
+
 
   // --- Team Lead Email ---  
   teamLeadEmailDiv.innerHTML = '';
@@ -132,6 +156,15 @@ export async function renderTeamPage(data) {
     console.log(`no team lead assigned for ${data?.teamData?.teamObj?.teamName}`);
   }
 
+  const buildDeleteURL = (a, teamName, currentUserEmail) => {
+    const base = a.deleteURL;
+    const params = new URLSearchParams({
+      team: teamName,
+      email: currentUserEmail,
+    });
+    return `${base}&${params.toString()}`;
+  }
+
   // --- Announcements ---
   announcementsDiv.innerHTML = '';
   if (data?.teamData?.announcements?.length) {
@@ -142,7 +175,9 @@ export async function renderTeamPage(data) {
 
       let adminBlock = '';
       if (data.auth.isTeamPageEditor) {
-        const deleteURLWithParams = `${a.deleteURL}&team=${data.teamData?.teamObj.shortName}`;
+        const currentUserEmail = data?.auth?.email || '';
+        const deleteURLWithParams = buildDeleteURL(a, teamName, currentUserEmail)
+        // const deleteURLWithParams = `${a.deleteURL}&team=${data.teamData?.teamObj.shortName}`;
         adminBlock = `
           <div class="announcement-admin links">
             <a href="${a.editURL}" target="_blank" class="edit-link">Edit</a>
@@ -284,8 +319,6 @@ export async function renderTeamPage(data) {
 
     updateContainer.appendChild(updateLink);
   }  
-
-  attachDeleteHandlers();
 
 }
 
@@ -839,62 +872,6 @@ function showRefreshOverlay(show) {
     overlay.style.opacity = '0';
     setTimeout(() => overlay.remove(), 400);
   }
-}
-
-function attachDeleteHandlers() {
-
-  const deleteLinks = document.querySelectorAll('.delete-link');
-  if (!deleteLinks.length) {
-    console.log('attachDeleteHandlers(): no delete links found');
-    return;
-  }
-
-  deleteLinks.forEach(link => {
-    link.addEventListener('click', async (e) => {
-      e.preventDefault();
-
-      const url = new URL(link.href);
-      const action = url.searchParams.get('action');
-      const id = url.searchParams.get('id');
-      const team = getNormalizedTeamParam();
-
-      if (action !== 'delete' || !id) {
-        console.warn('Invalid delete link:', link.href);
-        return;
-      }
-
-      const confirmDelete = confirm('Are you sure you want to delete this announcement?');
-      if (!confirmDelete) return;
-
-      setLoading(true);
-
-      try {
-        const backendUrl = `${url.origin}${url.pathname}`;
-        const result = await callBackend({
-          team,
-          action,
-          id,
-          email: currentUser?.email || '',
-        });
-
-        if (result?.success) {
-          alert('Announcement deleted successfully.');
-          console.log('Delete response:', result);
-
-          // Reload UI after delete
-          await handleLoginSuccess(); 
-        } else {
-          alert(`Delete failed: ${result?.message || 'Unknown error'}`);
-          console.warn('Delete error:', result);
-        }
-      } catch (err) {
-        console.error('Delete request failed:', err);
-        alert('Failed to delete announcement.');
-      } finally {
-        setLoading(false);
-      }
-    });
-  });
 }
 
 /**
