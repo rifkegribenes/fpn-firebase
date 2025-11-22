@@ -127,7 +127,7 @@ export async function renderTeamPage(data) {
       if (currentFileUrl) {
         const deleteBannerURL = `${config.backendUrl}?team=${teamName}&email=${currentUserEmail}&action=deleteBanner&fileUrl=${encodeURIComponent(currentFileUrl)}`;
         const bannerAdminHTML = `
-          <div class="banner-admin links" style="margin-top: 8px; font-size: 0.9em;">
+          <div class="announcement-admin links" style="margin-top: 8px; font-size: 0.9em;">
             <a href="https://docs.google.com/forms/d/e/1FAIpQLSe9TU8URPswEVELyy9jOImY2_2vJ9OOE7O8L5JlNUuiJzPQYQ/viewform?usp=pp_url&entry.1458714000=${encodeURIComponent(teamName)}" target="_blank" class="edit-link">New Image</a>
             &nbsp;|&nbsp;
             <a href="${deleteBannerURL}" target="_blank" class="delete-link">Delete</a>
