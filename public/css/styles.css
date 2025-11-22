@@ -144,6 +144,10 @@ img {
   color: rgba(7, 55, 99, 0.8);
 }
 
+section.drive {
+  border-bottom: 0 !important;
+}
+
 }
 
 /* ===== TYPOGRAPHY ===== */
@@ -281,10 +285,26 @@ ul.icon-list li.icon-drive {
   padding-left:0;
 }
 
+/* DRIVE icon */
+
 ul.icon-list li.icon-drive i {
   margin-right: 10px;
   font-size: 14px;
   vertical-align: middle;
+}
+
+/* MIP icon */
+
+img.icon-mip {
+  margin-right: 4px;
+  vertical-align: middle;
+  width: 14px;    /* match fa icon size */
+  height: 14px;   /* optional, keep it square */
+  display: inline;
+}
+
+.mip a {
+  display: inline;
 }
 
 /* --- Mobile stacking fix --- */
