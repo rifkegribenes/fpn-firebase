@@ -1,5 +1,6 @@
 export const config = {
   backendUrl: "https://script.google.com/macros/s/AKfycbzv51l398A1ZWWpxFpCZOeYwt6gYiBDZN3izI3lkejN7LT3IhSBw1TO0J0KQT7G1SFhRg/exec",
+  DEPLOYMENT_ID: "AKfycbzv51l398A1ZWWpxFpCZOeYwt6gYiBDZN3izI3lkejN7LT3IhSBw1TO0J0KQT7G1SFhRg",
 
   firebase: {
     apiKey: "AIzaSyBqNQuv-POHcNGtU8WHmV0e-uKRlryIhIs",
