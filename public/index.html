@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,6 +7,7 @@
   <title>Team Page</title>
   <link rel="stylesheet" href="css/styles.css" />
   <link rel="stylesheet" href="css/styles-gsite.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
 </head>
 <body>
   <div id="app">
@@ -95,6 +97,12 @@
           <!-- ===== MAIN CONTENT ===== -->
           <div class="mainContent">
             <div id="editor"></div>
+            <section id="bannerSection" class="block banner">
+              <h3 class="blockhead"></h3>
+              <div id="banner" class="cont">
+                
+              </div>
+            </section>
 
             <section class="block announcements">
               <h3 class="blockhead">Announcements</h3>
@@ -113,8 +121,21 @@
             <!-- ===== QUICK LINKS ===== -->
             <div class="quickLinks" id="quickLinks">
               <p class="qlHed">Quick Links</p>
-              <p class="qlP"><a href="https://app.betterimpact.com/" target="_blank">Log hours on MIP</a></p>
             </div>
+
+            <!-- ===== ADMIN ===== -->
+              <div id="content"></div>
+
+              <div id="adminButtons">
+                <div id="teamUpdateContainer"></div>
+                <button id="refreshBtn" hidden>Refresh data</button>
+                <button id="loginBtn">Login</button>
+                <button id="logoutBtn" hidden>Logout</button>
+              </div>
+
+              <div id="userInfo"></div>
+
+            <section class="sidebar-section" id="teamLeadEmail" class="qlP teamLeadEmail"></section>  
 
             <section class="sidebar-section minutes">
               <h4>Meeting Minutes</h4>
@@ -136,17 +157,16 @@
               <div id="drive" class="cont"></div>
             </section>
 
-            <!-- ===== ADMIN / FOOTER ===== -->
-              <div id="content"></div>
+            <div class="quickLinks">
+              <p class="qlP mip">
+                <img class="icon-mip" src="/img/betterImpact.svg" alt="BetterImpact logo" />
+                <a href="https://app.betterimpact.com/" target="_blank" >
+                Log hours on MIP
+              </a>
+            </p>
+            </div>
 
-              <div id="adminButtons">
-                <div id="teamUpdateContainer"></div>
-                <button id="refreshBtn" hidden>Refresh data</button>
-                <button id="loginBtn">Login</button>
-                <button id="logoutBtn" hidden>Logout</button>
-              </div>
-
-              <div id="userInfo"></div>
+            
             
           </aside>
         </div>
