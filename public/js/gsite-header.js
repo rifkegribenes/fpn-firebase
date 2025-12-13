@@ -7,7 +7,10 @@ window.addEventListener('scroll', function () {
 
   // 1 — ALWAYS change siteHeader background (mobile + desktop)
   nav.style.backgroundColor = scrolled
-    ? 'rgba(7, 55, 99, 1)'
+    ? 'white'
+    : 'transparent';
+  nav.style.borderBottom = scrolled
+    ? '1px solid rgba(28, 28, 28, .3)'
     : 'transparent';
 
 
@@ -17,8 +20,8 @@ window.addEventListener('scroll', function () {
     const carets = nav.querySelectorAll('svg path:not([fill="none"])');
 
     if (scrolled) {
-      navbarLinks.forEach(el => (el.style.color = 'white'));
-      carets.forEach(path => path.setAttribute('stroke', 'white'));
+      // navbarLinks.forEach(el => (el.style.color = 'white'));
+      // carets.forEach(path => path.setAttribute('stroke', 'white'));
     } else {
       navbarLinks.forEach(el => (el.style.color = 'rgb(28, 28, 28)'));
       carets.forEach(path =>
@@ -28,7 +31,7 @@ window.addEventListener('scroll', function () {
   } else {
     const hamburger = document.getElementById('hamburger').querySelectorAll('svg path');
     if (scrolled) {
-      hamburger.forEach(path => path.style.stroke = 'white');
+      // hamburger.forEach(path => path.style.stroke = 'white');
     } else {
       hamburger.forEach(path => path.style.stroke = 'rgb(28, 28, 28)');
 
