@@ -582,6 +582,83 @@ img.bannerImg {
   background-color: #eee;
 }
 
+/* PAGE UPDATE FORM */
+ /* Center wrapper and constrain width */
+  .form-wrapper {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+
+  form > div,
+  form section > div {
+    margin-bottom: 1rem;
+  }
+
+  label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+  }
+
+  input[type="text"],
+  input[type="email"],
+  input[type="date"],
+  input[type="file"],
+  textarea,
+  select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box;
+  }
+
+  textarea {
+    min-height: 80px;
+  }
+
+  /* Radio group styling */
+  .radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start; /* ensure left alignment in wrapper */
+  }
+
+  .radio-group label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    width: 100%;       /* full width so text wraps correctly */
+    cursor: pointer;
+  }
+
+  .radio-group input[type="radio"] {
+    flex-shrink: 0;    /* keep radio size fixed */
+    margin-top: 0.25rem; /* align with first line of text */
+  }
+
+  .radio-group label span {
+    display: inline;   /* normal wrapping text */
+    word-break: break-word; /* wrap long text */
+  }
+
+  button[type="submit"] {
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    border-radius: 4px;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+  }
+
+  button[type="submit"]:hover {
+    background-color: #0056b3;
+  }
+
 /* responsive adjustments */
 @media (max-width: 768px) {
   #teamLinks {

@@ -28,6 +28,180 @@ function cacheKeyFor(team) {
   return `teamData_${team.toLowerCase()}`;
 }
 
+function renderUpdateFormHTML() {
+  return `
+  <div class="form-wrapper">
+<form id="updateFormForm" action="https://docs.google.com/forms/u/0/d/e/1FAIpQLSe9TU8URPswEVELyy9jOImY2_2vJ9OOE7O8L5JlNUuiJzPQYQ/formResponse" method="POST" target="_self">
+
+  <!-- Your Team -->
+  <div>
+    <label for="entry.538407109">Your Team *</label>
+    <select name="entry.538407109" id="entry.538407109" required>
+      <option value="">Choose</option>
+    </select>
+  </div>
+
+  <!-- Email -->
+  <div>
+    <label for="entry.123456789">Email *</label>
+    <input type="email" name="entry.123456789" id="entry.123456789" required>
+  </div>
+
+  <!-- What do you want to update? -->
+  <div id="update_question">
+    <p>What do you want to update? <span aria-label="Required">*</span></p>
+    <div class="radio-group" role="radiogroup" aria-required="true">
+      <label>
+        <input type="radio" name="entry.1192593661" value="Post announcement"> Post announcement (or edit existing announcement)
+      </label>
+      <label>
+        <input type="radio" name="entry.1192593661" value="Upload meeting minutes"> Upload meeting minutes
+      </label>
+      <label>
+        <input type="radio" name="entry.1192593661" value="Upload operations plan"> Upload operations plan
+      </label>
+      <label>
+        <input type="radio" name="entry.1192593661" value="Add or replace banner image"> Add or replace a banner image
+      </label>
+    </div>
+  </div>
+
+  <!-- Sections -->
+  <section id="section_post_announcement">
+    <h3>Post announcement</h3>
+    <p>Edit an existing announcement by clicking the 'Edit' link directly below the announcement on the team page. This link will only be visible if you're logged in as a page editor.</p>
+    <div>
+      <label for="entry_announcement_title">Announcement Title *</label>
+      <input type="text" id="entry_announcement_title" name="entry.1513742467" required>
+    </div>
+    <div>
+      <label for="entry_announcement_body">Announcement Body *</label>
+      <textarea id="entry_announcement_body" name="entry.1206794665" required></textarea>
+    </div>
+  </section>
+
+  <section id="section_meeting_minutes">
+    <h3>Upload meeting minutes</h3>
+    <p>Please upload all files in PDF or docx format, or you can browse to an existing Google doc in your drive.</p>
+    <div>
+      <label for="entry_meeting_date">Date of meeting *</label>
+      <input type="date" id="entry_meeting_date" name="entry.358896631" required max="2075-01-01">
+    </div>
+    <div>
+      <label for="entry_meeting_upload">Upload your meeting minutes here (.pdf, .docx or URL to Google Document) *</label>
+      <input type="file" id="entry_meeting_upload" name="entry.1637818725" accept=".pdf,.docx" required>
+      <small>Upload 1 supported file: PDF or document. Max 10 MB.</small>
+    </div>
+  </section>
+
+  <section id="section_operations_plan">
+    <h3>Upload operations plan</h3>
+    <p>Please upload all files in PDF or doc format.</p>
+    <div>
+      <label for="entry_operations_plan">Upload your team's operations plan here (.pdf, .docx or URL to Google Document) *</label>
+      <input type="file" id="entry_operations_plan" name="entry.1704615082" accept=".pdf,.docx" required>
+      <small>Upload 1 supported file: PDF or document. Max 10 MB.</small>
+    </div>
+  </section>
+
+  <section id="section_banner">
+    <h3>Add or replace banner image</h3>
+    <p><i>
+      Images must be landscape format (wider than it is tall) and at least 850 pixels wide. 
+      Ideal crop is 850 x 300px.<br>
+      Images that are larger than this will be cropped to 850x300px. New uploads will replace existing banner image.
+    </i></p>
+    <div>
+      <label for="entry_banner_upload">Upload banner photo here *</label>
+      <input type="file" id="entry_banner_upload" name="entry.1687052692" accept="image/*" required>
+      <small>Upload 1 supported file: image. Max 10 MB.</small>
+    </div>
+    <div>
+      <label for="entry_banner_alt">Image alt text (brief image description for screen readers) *</label>
+      <input type="text" id="entry_banner_alt" name="entry.1330141932" required>
+    </div>
+  </section>
+
+  <div>
+    <button type="submit" id="form_submit">Submit</button>
+  </div>
+
+</form>
+</div>`
+}
+
+function initUpdateForm(onComplete) {
+  const radios = document.querySelectorAll('input[name="entry.1192593661"]');
+  const submitBtn = document.getElementById('form_submit');
+  const updateDiv = document.getElementById('update_question');
+
+  const sections = {
+    "Post announcement": document.getElementById("section_post_announcement"),
+    "Upload meeting minutes": document.getElementById("section_meeting_minutes"),
+    "Upload operations plan": document.getElementById("section_operations_plan"),
+    "Add or replace banner image": document.getElementById("section_banner")
+  };
+
+  Object.values(sections).forEach(s => s.style.display = 'none');
+  submitBtn.style.display = 'none';
+
+  radios.forEach(radio => {
+    radio.addEventListener('change', () => {
+      Object.values(sections).forEach(s => s.style.display = 'none');
+
+      const selected = radio.value;
+      if (sections[selected]) {
+        sections[selected].style.display = 'block';
+        submitBtn.style.display = 'block';
+        updateDiv.style.display = 'none';
+      }
+    });
+  });
+
+  document.getElementById('updateFormForm').addEventListener('submit', () => {
+    setTimeout(onComplete, 500); // allow Google Forms POST
+  });
+}
+
+
+async function showUpdateForm() {
+  const formMount = document.getElementById('updateForm');   
+  const teamContent = document.getElementById('teamContent');
+
+  if (!formMount || !teamContent) {
+    console.error('Update form mount or teamContent not found');
+    return;
+  }
+
+  // Hide main team content (sidebar remains visible)
+  teamContent.style.display = 'none';
+
+  // Render form
+  formMount.innerHTML = renderUpdateFormHTML();
+  formMount.style.display = 'block';
+
+  initUpdateForm(async () => {
+    // Remove form
+    formMount.innerHTML = '';
+    formMount.style.display = 'none';
+
+    // Restore team page
+    teamContent.style.display = 'block';
+
+    const team = getNormalizedTeamParam();
+    setLoading(true);
+    try {
+      await loadBackend(team, currentUser?.email);
+    } finally {
+      setLoading(false);
+    }
+  });
+}
+
+
+
+
+
 /**
  * Check if localStorage is available and writable.
  */
@@ -314,14 +488,17 @@ export async function renderTeamPage(data) {
   updateContainer.innerHTML = ''; // clear previous content
 
   if (data?.auth?.isTeamPageEditor && data?.teamData?.teamObj?.teamName) {
-    const updateLink = document.createElement('a');
-    updateLink.id = 'teamUpdateLink';
-    updateLink.href = `https://docs.google.com/forms/d/e/1FAIpQLSe9TU8URPswEVELyy9jOImY2_2vJ9OOE7O8L5JlNUuiJzPQYQ/viewform?usp=pp_url&entry.1458714000=${encodeURIComponent(data.teamData?.teamObj.teamName)}`;
-    updateLink.target = '_blank';
-    updateLink.className = 'responsiveLink';
-    updateLink.textContent = 'Update page';
+    const updateBtn = document.createElement('button');
+    updateBtn.id = 'teamUpdateBtn';
+    updateBtn.type = 'button';
+    updateBtn.className = 'responsiveLink';
+    updateBtn.textContent = 'Update page';
+    updateContainer.appendChild(updateBtn);
 
-    updateContainer.appendChild(updateLink);
+    updateBtn.addEventListener('click', async () => {
+      await showUpdateForm();
+    });
+
   }  
 
 }

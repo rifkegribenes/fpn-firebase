@@ -81,95 +81,100 @@
       <div id="teamLinks"></div>
     </div>
 
+    <div id="updateForm"></div>
 
     <div id="teamContent" class="pageContainer">
 
-      <!-- ===== PAGE TITLE ===== -->
-      <div id="teamInfo"></div>
-      <h1 id="pageTitle">Team Page</h1>
-      <div id="image"></div>
+      <div id="teamContentBody">
 
-      <!-- ===== PUBLIC CONTENT ===== -->
-      <div class="publicContent">
+        <!-- ===== PAGE TITLE ===== -->
+        <div id="teamInfo"></div>
+        <h1 id="pageTitle">Team Page</h1>
+        <div id="image"></div>
 
-        <!-- ===== MAIN + SIDEBAR CONTAINER ===== -->
-        <div class="pcContainer container">
-          <!-- ===== MAIN CONTENT ===== -->
-          <div class="mainContent">
-            <div id="editor"></div>
-            <section id="bannerSection" class="block banner">
-              <h3 class="blockhead"></h3>
-              <div id="banner" class="cont">
-                
+        <!-- ===== PUBLIC CONTENT ===== -->
+        <div class="publicContent">
+
+          <!-- ===== MAIN + SIDEBAR CONTAINER ===== -->
+          <div class="pcContainer container">
+            <!-- ===== MAIN CONTENT ===== -->
+            <div class="mainContent">
+              <div id="editor"></div>
+              <section id="bannerSection" class="block banner">
+                <h3 class="blockhead"></h3>
+                <div id="banner" class="cont">
+                  
+                </div>
+              </section>
+
+              <section class="block announcements">
+                <h3 class="blockhead">Announcements</h3>
+                <div id="announcements" class="cont"></div>
+              </section>
+
+              <section class="block calendar">
+                <h3 class="blockhead">Upcoming Events</h3>
+                <div id="events" class="cont"></div>
+              </section>
+            </div>
+
+            <!-- ===== SIDEBAR ===== -->
+            <aside class="sidebar">
+
+              <!-- ===== QUICK LINKS ===== -->
+              <div class="quickLinks" id="quickLinks">
+                <p class="qlHed">Quick Links</p>
               </div>
-            </section>
 
-            <section class="block announcements">
-              <h3 class="blockhead">Announcements</h3>
-              <div id="announcements" class="cont"></div>
-            </section>
+              <!-- ===== ADMIN ===== -->
+                <div id="content"></div>
 
-            <section class="block calendar">
-              <h3 class="blockhead">Upcoming Events</h3>
-              <div id="events" class="cont"></div>
-            </section>
+                <div id="adminButtons">
+                  <div id="teamUpdateContainer"></div>
+                  <button id="refreshBtn" hidden>Refresh data</button>
+                  <button id="loginBtn">Login</button>
+                  <button id="logoutBtn" hidden>Logout</button>
+                </div>
+
+                <div id="userInfo"></div>
+
+              <section class="sidebar-section" id="teamLeadEmail" class="qlP teamLeadEmail"></section>  
+
+              <section class="sidebar-section minutes">
+                <h4>Meeting Minutes</h4>
+                <div id="minutes" class="cont"></div>
+              </section>
+
+              <section class="sidebar-section ops">
+                <h4>Operations Plan</h4>
+                <div id="ops" class="cont"></div>
+              </section>
+
+              <section class="sidebar-section group">
+                <h4>Google Group</h4>
+                <div id="group" class="cont"></div>
+              </section>
+
+              <section class="sidebar-section drive">
+                <h4>Team Drive</h4>
+                <div id="drive" class="cont"></div>
+              </section>
+
+              <div class="quickLinks">
+                <p class="qlP mip">
+                  <img class="icon-mip" src="/img/betterImpact.svg" alt="BetterImpact logo" />
+                  <a href="https://app.betterimpact.com/" target="_blank" >
+                  Log hours on MIP
+                </a>
+              </p>
+              </div>
+
+              
+              
+            </aside>
           </div>
-
-          <!-- ===== SIDEBAR ===== -->
-          <aside class="sidebar">
-
-            <!-- ===== QUICK LINKS ===== -->
-            <div class="quickLinks" id="quickLinks">
-              <p class="qlHed">Quick Links</p>
-            </div>
-
-            <!-- ===== ADMIN ===== -->
-              <div id="content"></div>
-
-              <div id="adminButtons">
-                <div id="teamUpdateContainer"></div>
-                <button id="refreshBtn" hidden>Refresh data</button>
-                <button id="loginBtn">Login</button>
-                <button id="logoutBtn" hidden>Logout</button>
-              </div>
-
-              <div id="userInfo"></div>
-
-            <section class="sidebar-section" id="teamLeadEmail" class="qlP teamLeadEmail"></section>  
-
-            <section class="sidebar-section minutes">
-              <h4>Meeting Minutes</h4>
-              <div id="minutes" class="cont"></div>
-            </section>
-
-            <section class="sidebar-section ops">
-              <h4>Operations Plan</h4>
-              <div id="ops" class="cont"></div>
-            </section>
-
-            <section class="sidebar-section group">
-              <h4>Google Group</h4>
-              <div id="group" class="cont"></div>
-            </section>
-
-            <section class="sidebar-section drive">
-              <h4>Team Drive</h4>
-              <div id="drive" class="cont"></div>
-            </section>
-
-            <div class="quickLinks">
-              <p class="qlP mip">
-                <img class="icon-mip" src="/img/betterImpact.svg" alt="BetterImpact logo" />
-                <a href="https://app.betterimpact.com/" target="_blank" >
-                Log hours on MIP
-              </a>
-            </p>
-            </div>
-
-            
-            
-          </aside>
         </div>
+
       </div>
     </div>
   </div>
