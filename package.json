@@ -1,0 +1,15 @@
+{
+  "name": "fpn-firebase_2025",
+  "version": "1.0.0",
+  "description": "",
+  "main": "Automations.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "googleapis": "^168.0.0"
+  }
+}

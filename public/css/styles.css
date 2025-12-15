@@ -352,6 +352,10 @@ img.bannerImg {
     height: 200px; 
     max-height: 200px;     
   }
+
+  #bannerSection {
+    padding-bottom: 10px;
+  }
 }
 
 /* ===== ANNOUNCEMENTS ===== */
@@ -457,7 +461,8 @@ img.bannerImg {
 }
 
 #adminButtons button,
-#adminButtons .responsiveLink {
+#adminButtons .responsiveLink,
+#form_submit {
   background: rgba(7, 55, 99, 1);
   color: white;
   border: none;
@@ -481,11 +486,13 @@ img.bannerImg {
 }
 
 #adminButtons button:hover,
-#adminButtons .responsiveLink:hover {
+#adminButtons .responsiveLink:hover,
+#form_submit:hover {
   background: rgba(7, 55, 99, 1);
 }
 
-#adminButtons button:disabled {
+#adminButtons button:disabled,
+#form_submit:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
@@ -584,10 +591,19 @@ img.bannerImg {
 
 /* PAGE UPDATE FORM */
  /* Center wrapper and constrain width */
+
+ #updateForm {
+  padding-top: 40px;
+
+ }
   .form-wrapper {
     max-width: 600px;
     margin: 0 auto;
     padding: 1rem;
+  }
+
+  form p {
+    font-size: 16px;
   }
 
   form > div,
@@ -613,6 +629,7 @@ img.bannerImg {
     border-radius: 4px;
     font-size: 1rem;
     box-sizing: border-box;
+    font-family: Lato, sans-serif;
   }
 
   textarea {
@@ -645,7 +662,9 @@ img.bannerImg {
     word-break: break-word; /* wrap long text */
   }
 
-  button[type="submit"] {
+  /* button is styled to match #adminButtons */
+
+/*  button[type="submit"] {
     padding: 0.5rem 1rem;
     font-size: 1rem;
     border-radius: 4px;
@@ -657,8 +676,33 @@ img.bannerImg {
 
   button[type="submit"]:hover {
     background-color: #0056b3;
+  }*/
+
+  /* Add red asterisk to labels for required fields */
+  label:has(+ input[required]),
+  label:has(+ textarea[required]),
+  label:has(+ select[required]) {
+    position: relative;
   }
 
+  label:has(+ input[required])::after,
+  label:has(+ textarea[required])::after,
+  label:has(+ select[required])::after {
+    content: " *";
+    color: red;
+    margin-left: 2px;
+    font-weight: bold;
+  }
+
+  p span[aria-label="Required"] {
+    color: red;
+    font-weight: bold;
+    margin-left: 2px;
+  }
+
+  p.formSmall {
+    font-size: .8em;
+  }
 /* responsive adjustments */
 @media (max-width: 768px) {
   #teamLinks {

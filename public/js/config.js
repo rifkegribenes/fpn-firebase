@@ -1,5 +1,8 @@
 export const config = {
+  // production // 
   backendUrl: "https://script.google.com/macros/s/AKfycbzv51l398A1ZWWpxFpCZOeYwt6gYiBDZN3izI3lkejN7LT3IhSBw1TO0J0KQT7G1SFhRg/exec",
+  // staging // backendUrl: "https://script.google.com/macros/s/AKfycbw8f2ckH25-KqNXwNlNdv85g4L5x1q0HJrYKVuhlDGzHXKQPW1eG2lr3mETwyLQuzCjAA/exec",
+  sheetdbUrl: "https://sheetdb.io/api/v1/ne0v0i21llmeh?sheet=TeamPageUpdateForm",
   DEPLOYMENT_ID: "AKfycbzv51l398A1ZWWpxFpCZOeYwt6gYiBDZN3izI3lkejN7LT3IhSBw1TO0J0KQT7G1SFhRg",
 
   firebase: {

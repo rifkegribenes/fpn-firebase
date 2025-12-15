@@ -31,21 +31,15 @@ function cacheKeyFor(team) {
 function renderUpdateFormHTML() {
   return `
   <div class="form-wrapper">
-<form id="updateFormForm" action="https://docs.google.com/forms/u/0/d/e/1FAIpQLSe9TU8URPswEVELyy9jOImY2_2vJ9OOE7O8L5JlNUuiJzPQYQ/formResponse" method="POST" target="_self">
-
+<form id="updateFormForm">
+  <section id="section_header">
+    <h3>Update team page</h3>
   <!-- Your Team -->
-  <div>
-    <label for="entry.538407109">Your Team *</label>
-    <select name="entry.538407109" id="entry.538407109" required>
-      <option value="">Choose</option>
-    </select>
-  </div>
+  <input type="hidden" name="entry.538407109" id="entry.538407109">
+
 
   <!-- Email -->
-  <div>
-    <label for="entry.123456789">Email *</label>
-    <input type="email" name="entry.123456789" id="entry.123456789" required>
-  </div>
+  <input type="hidden" name="entry.123456789" id="entry.123456789">
 
   <!-- What do you want to update? -->
   <div id="update_question">
@@ -69,26 +63,26 @@ function renderUpdateFormHTML() {
   <!-- Sections -->
   <section id="section_post_announcement">
     <h3>Post announcement</h3>
-    <p>Edit an existing announcement by clicking the 'Edit' link directly below the announcement on the team page. This link will only be visible if you're logged in as a page editor.</p>
+    <p class="formSmall">Edit an existing announcement by clicking the 'Edit' link directly below the announcement on the team page. This link will only be visible if you're logged in as a page editor.</p>
     <div>
-      <label for="entry_announcement_title">Announcement Title *</label>
+      <label for="entry_announcement_title">Announcement Title</label>
       <input type="text" id="entry_announcement_title" name="entry.1513742467" required>
     </div>
     <div>
-      <label for="entry_announcement_body">Announcement Body *</label>
+      <label for="entry_announcement_body">Announcement Body</label>
       <textarea id="entry_announcement_body" name="entry.1206794665" required></textarea>
     </div>
   </section>
 
   <section id="section_meeting_minutes">
     <h3>Upload meeting minutes</h3>
-    <p>Please upload all files in PDF or docx format, or you can browse to an existing Google doc in your drive.</p>
+    <p class="formSmall">Please upload all files in PDF or docx format, or you can browse to an existing Google doc in your drive.</p>
     <div>
-      <label for="entry_meeting_date">Date of meeting *</label>
+      <label for="entry_meeting_date">Date of meeting</label>
       <input type="date" id="entry_meeting_date" name="entry.358896631" required max="2075-01-01">
     </div>
     <div>
-      <label for="entry_meeting_upload">Upload your meeting minutes here (.pdf, .docx or URL to Google Document) *</label>
+      <label for="entry_meeting_upload">Upload your meeting minutes here (.pdf, .docx or URL to Google Document)</label>
       <input type="file" id="entry_meeting_upload" name="entry.1637818725" accept=".pdf,.docx" required>
       <small>Upload 1 supported file: PDF or document. Max 10 MB.</small>
     </div>
@@ -96,9 +90,9 @@ function renderUpdateFormHTML() {
 
   <section id="section_operations_plan">
     <h3>Upload operations plan</h3>
-    <p>Please upload all files in PDF or doc format.</p>
+    <p class="formSmall">Please upload all files in PDF or doc format.</p>
     <div>
-      <label for="entry_operations_plan">Upload your team's operations plan here (.pdf, .docx or URL to Google Document) *</label>
+      <label for="entry_operations_plan">Upload your team's operations plan here (.pdf, .docx or URL to Google Document)</label>
       <input type="file" id="entry_operations_plan" name="entry.1704615082" accept=".pdf,.docx" required>
       <small>Upload 1 supported file: PDF or document. Max 10 MB.</small>
     </div>
@@ -106,18 +100,18 @@ function renderUpdateFormHTML() {
 
   <section id="section_banner">
     <h3>Add or replace banner image</h3>
-    <p><i>
+    <p class="formSmall">
       Images must be landscape format (wider than it is tall) and at least 850 pixels wide. 
       Ideal crop is 850 x 300px.<br>
       Images that are larger than this will be cropped to 850x300px. New uploads will replace existing banner image.
-    </i></p>
+    </p>
     <div>
-      <label for="entry_banner_upload">Upload banner photo here *</label>
+      <label for="entry_banner_upload">Upload banner photo here</label>
       <input type="file" id="entry_banner_upload" name="entry.1687052692" accept="image/*" required>
       <small>Upload 1 supported file: image. Max 10 MB.</small>
     </div>
     <div>
-      <label for="entry_banner_alt">Image alt text (brief image description for screen readers) *</label>
+      <label for="entry_banner_alt">Image alt text (brief image description for screen readers)</label>
       <input type="text" id="entry_banner_alt" name="entry.1330141932" required>
     </div>
   </section>
@@ -130,10 +124,12 @@ function renderUpdateFormHTML() {
 </div>`
 }
 
-function initUpdateForm(onComplete) {
+function initUpdateForm(onComplete, teamObj, userEmail) {
   const radios = document.querySelectorAll('input[name="entry.1192593661"]');
   const submitBtn = document.getElementById('form_submit');
   const updateDiv = document.getElementById('update_question');
+  const teamSelect = document.getElementById('entry.538407109');
+  const emailInput = document.getElementById('entry.123456789');
 
   const sections = {
     "Post announcement": document.getElementById("section_post_announcement"),
@@ -142,61 +138,184 @@ function initUpdateForm(onComplete) {
     "Add or replace banner image": document.getElementById("section_banner")
   };
 
-  Object.values(sections).forEach(s => s.style.display = 'none');
+  // Hide all sections initially
+  Object.values(sections).forEach(section => {
+    section.style.display = 'none';
+    // Remove required from all inputs initially
+    section.querySelectorAll('input, textarea, select').forEach(input => input.required = false);
+  });
   submitBtn.style.display = 'none';
 
+  // Prepopulate hidden team field
+  if (teamObj?.teamName && teamSelect) {
+    teamSelect.value = teamObj.teamName;
+  }
+
+  // Prepopulate email input
+  if (userEmail && emailInput) {
+    emailInput.value = userEmail;
+  }
+
+  // Radio buttons logic
   radios.forEach(radio => {
     radio.addEventListener('change', () => {
-      Object.values(sections).forEach(s => s.style.display = 'none');
-
-      const selected = radio.value;
-      if (sections[selected]) {
-        sections[selected].style.display = 'block';
-        submitBtn.style.display = 'block';
-        updateDiv.style.display = 'none';
-      }
+      Object.entries(sections).forEach(([key, section]) => {
+        const inputs = section.querySelectorAll('input, textarea, select');
+        if (radio.value === key) {
+          section.style.display = 'block';
+          submitBtn.style.display = 'block';
+          updateDiv.style.display = 'none';
+          // Make visible section inputs required
+          inputs.forEach(input => input.required = true);
+        } else {
+          section.style.display = 'none';
+          // Remove required from hidden sections
+          inputs.forEach(input => input.required = false);
+        }
+      });
     });
   });
 
-  document.getElementById('updateFormForm').addEventListener('submit', () => {
-    setTimeout(onComplete, 500); // allow Google Forms POST
-  });
+  // Form submit
+document.getElementById('updateFormForm').addEventListener('submit', async (evt) => {
+  evt.preventDefault(); // prevent default form submission
+
+  // const username = 'eotob97k';
+  // const password = '26h7y352pemb27k1idtz';
+  // const basicAuth = btoa(`${username}:${password}`);
+
+  const selectedRadio = document.querySelector('input[name="entry.1192593661"]:checked');
+  if (!selectedRadio) return alert('Please select what to update');
+
+  // Prepare payload in SheetDB format
+  const payload = {
+    data: [
+      {
+        Timestamp: new Date().toISOString(),
+        Email: currentUser?.email || '',
+        Team: getNormalizedTeamParam(),
+        UpdateType: selectedRadio.value,
+        Title: document.getElementById('entry_announcement_title')?.value || '',
+        Body: document.getElementById('entry_announcement_body')?.value || '',
+        MeetingDate: document.getElementById('entry_meeting_date')?.value || '',
+        MeetingFileUrl: '',
+        OperationsFileUrl: '',
+        BannerFileUrl: '',
+        BannerAlt: document.getElementById('entry_banner_alt')?.value || '',
+        BannerPublicUrl: '',
+        EditUrl: '',
+        Id: '',
+        DeleteUrl: ''
+      }
+    ]
+  };
+
+  try {
+    setLoading(true, 'Submitting…');
+    // console.log('Submitting to SheetDB:', config.sheetdbUrl);
+
+    // console.log('Payload being sent to SheetDB:', JSON.stringify(payload, null, 2));
+
+    const res = await fetch(config.sheetdbUrl, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json'
+        // 'Authorization': `Basic ${basicAuth}`  
+      },
+      body: JSON.stringify(payload)
+    });
+
+    // console.log('Response status:', res.status);
+    // console.log('Response headers:', [...res.headers]);
+    // console.log('Response body:', await res.text());
+
+    // const json = await res.json();
+
+    const text = await res.text();
+    console.log('Raw response text:', text);
+
+    let json;
+    try {
+      json = JSON.parse(text);
+    } catch(e) {
+      console.error('Response is not valid JSON:', e);
+      json = { error: text };
+    }
+
+    if (res.ok) {
+      alert('Update submitted successfully!');
+      onComplete(); // restore team page
+    } else {
+      alert('Submission failed: ' + JSON.stringify(json));
+    }
+
+  } catch (err) {
+    alert('Error submitting: ' + err.message);
+  } finally {
+    setLoading(false);
+  }
+});
+
+
+
 }
 
 
-async function showUpdateForm() {
-  const formMount = document.getElementById('updateForm');   
-  const teamContent = document.getElementById('teamContent');
 
-  if (!formMount || !teamContent) {
-    console.error('Update form mount or teamContent not found');
-    return;
-  }
 
-  // Hide main team content (sidebar remains visible)
+
+async function showUpdateForm(teamData) {
+  const formMount = await waitForElement('#updateForm');
+  const teamContent = await waitForElement('#teamContent');
+
+  // Hide main content
   teamContent.style.display = 'none';
 
-  // Render form
+  // Render the form
   formMount.innerHTML = renderUpdateFormHTML();
   formMount.style.display = 'block';
 
-  initUpdateForm(async () => {
-    // Remove form
-    formMount.innerHTML = '';
-    formMount.style.display = 'none';
+  // --- AUTOFILL TEAM AND EMAIL ---
+  const teamParam = getNormalizedTeamParam(); // e.g., "fire"
+  const email = currentUser?.email || '';
 
-    // Restore team page
-    teamContent.style.display = 'block';
+  // Team dropdown
+  const teamSelect = formMount.querySelector('select[name="entry.538407109"]');
+  if (teamSelect) {
+    // Add current team as the only option and select it
+    teamSelect.innerHTML = `<option value="${teamParam}" selected>${teamParam}</option>`;
+  }
 
-    const team = getNormalizedTeamParam();
-    setLoading(true);
-    try {
-      await loadBackend(team, currentUser?.email);
-    } finally {
-      setLoading(false);
-    }
-  });
+  // Email input
+  const emailInput = formMount.querySelector('input[type="email"][name="entry.123456789"]');
+  if (emailInput && email) {
+    emailInput.value = email;
+  }
+
+  // Initialize radio/section behavior, prefill team & email
+  initUpdateForm(
+    async () => {
+      // Remove form
+      formMount.innerHTML = '';
+      formMount.style.display = 'none';
+
+      // Restore team page
+      teamContent.style.display = 'block';
+
+      const team = getNormalizedTeamParam();
+      setLoading(true);
+      try {
+        await loadBackend(team, currentUser?.email);
+      } finally {
+        setLoading(false);
+      }
+    },
+    teamData.teamObj,   
+    teamData.auth.email 
+  );
 }
+
+
 
 
 
@@ -496,8 +615,9 @@ export async function renderTeamPage(data) {
     updateContainer.appendChild(updateBtn);
 
     updateBtn.addEventListener('click', async () => {
-      await showUpdateForm();
+      await showUpdateForm(data.teamData); // <-- pass teamData here
     });
+
 
   }  
 
