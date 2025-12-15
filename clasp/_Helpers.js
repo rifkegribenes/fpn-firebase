@@ -177,6 +177,25 @@ function checkGroupMembership(groupEmail, userEmail) {
   return result;
 }
 
+// teamPageUpdate onChange
+function onChange(e) {
+  if (e.changeType !== 'INSERT_ROW') return;
+
+  const SHEET_NAME = 'TeamPageUpdateForm'; 
+  const sheet = e.source.getSheetByName(SHEET_NAME);
+  if (!sheet) return;
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return; // header only
+
+  const timestampCol = 1; // A
+  const timestampCell = sheet.getRange(lastRow, timestampCol);
+
+  // Only stamp rows that are truly new
+  if (timestampCell.getValue()) return;
+
+  timestampCell.setValue(new Date());
+}
 
 
 

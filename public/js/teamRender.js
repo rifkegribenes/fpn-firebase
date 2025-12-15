@@ -176,89 +176,93 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
     });
   });
 
-  // Form submit
-document.getElementById('updateFormForm').addEventListener('submit', async (evt) => {
-  evt.preventDefault(); // prevent default form submission
+ // Form submit
+  document.getElementById('updateFormForm').addEventListener('submit', async (evt) => {
+    evt.preventDefault();
 
-  // const username = 'eotob97k';
-  // const password = '26h7y352pemb27k1idtz';
-  // const basicAuth = btoa(`${username}:${password}`);
+    const selectedRadio = document.querySelector(
+      'input[name="entry.1192593661"]:checked'
+    );
+    if (!selectedRadio) {
+      alert('Please select what to update');
+      return;
+    }
 
-  const selectedRadio = document.querySelector('input[name="entry.1192593661"]:checked');
-  if (!selectedRadio) return alert('Please select what to update');
+    const payload = {
+      data: [
+        {
+          // Timestamp is not set here, it's in the GWS Automations script attached to the sheet
+          "Email Address": currentUser?.email || "",
+          "Your Team": getNormalizedTeamParam(),
+          "What do you want to update?": selectedRadio.value,
 
-  // Prepare payload in SheetDB format
-  const payload = {
-    data: [
-      {
-        Timestamp: new Date().toISOString(),
-        Email: currentUser?.email || '',
-        Team: getNormalizedTeamParam(),
-        UpdateType: selectedRadio.value,
-        Title: document.getElementById('entry_announcement_title')?.value || '',
-        Body: document.getElementById('entry_announcement_body')?.value || '',
-        MeetingDate: document.getElementById('entry_meeting_date')?.value || '',
-        MeetingFileUrl: '',
-        OperationsFileUrl: '',
-        BannerFileUrl: '',
-        BannerAlt: document.getElementById('entry_banner_alt')?.value || '',
-        BannerPublicUrl: '',
-        EditUrl: '',
-        Id: '',
-        DeleteUrl: ''
-      }
-    ]
-  };
+          "Announcement Title":
+            document.getElementById('entry_announcement_title')?.value || "",
 
-  try {
-    setLoading(true, 'Submitting…');
-    // console.log('Submitting to SheetDB:', config.sheetdbUrl);
+          "Announcement Body":
+            document.getElementById('entry_announcement_body')?.value || "",
 
-    // console.log('Payload being sent to SheetDB:', JSON.stringify(payload, null, 2));
+          "Date of meeting":
+            document.getElementById('entry_meeting_date')?.value || "",
 
-    const res = await fetch(config.sheetdbUrl, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json'
-        // 'Authorization': `Basic ${basicAuth}`  
-      },
-      body: JSON.stringify(payload)
-    });
+          "Upload your meeting minutes here (.pdf, .docx or URL to Google Document)":
+            "",
 
-    // console.log('Response status:', res.status);
-    // console.log('Response headers:', [...res.headers]);
-    // console.log('Response body:', await res.text());
+          "Upload your team's operations plan here (.pdf, .docx or URL to Google Document)":
+            "",
 
-    // const json = await res.json();
+          "Upload banner photo here":
+            "",
 
-    const text = await res.text();
-    console.log('Raw response text:', text);
+          "Image alt text (brief image description for screen readers)":
+            document.getElementById('entry_banner_alt')?.value || "",
 
-    let json;
+          "BannerPublicURL": "",
+          "Edit URL": "",
+          "Id": "",
+          "Delete URL": ""
+        }
+      ]
+    };
+
     try {
-      json = JSON.parse(text);
-    } catch(e) {
-      console.error('Response is not valid JSON:', e);
-      json = { error: text };
-    }
+      setLoading(true, 'Submitting…');
 
-    if (res.ok) {
+      const res = await fetch(config.sheetdbUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const text = await res.text();
+      let json;
+
+      try {
+        json = JSON.parse(text);
+      } catch {
+        json = { raw: text };
+      }
+
+      if (!res.ok) {
+        throw new Error(JSON.stringify(json));
+      }
+
       alert('Update submitted successfully!');
-      onComplete(); // restore team page
-    } else {
-      alert('Submission failed: ' + JSON.stringify(json));
+      onComplete();
+
+    } catch (err) {
+      alert('Submission failed: ' + err.message);
+    } finally {
+      setLoading(false);
     }
+  });
 
-  } catch (err) {
-    alert('Error submitting: ' + err.message);
-  } finally {
-    setLoading(false);
+
+
+
   }
-});
-
-
-
-}
 
 
 
