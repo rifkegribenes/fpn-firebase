@@ -282,19 +282,21 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
     try {
       setLoading(true, 'Submitting…');
 
-      const url = isUpdate 
-      ? `${config.sheetdbUrl}/row/${rowId}`  // PUT for existing row
-      : config.sheetdbUrl;                   // POST for new row
+      const url = `https://sheetdb.io/api/v1/ne0v0i21llmeh?sheet=TeamPageUpdateForm`;
+      const method = 'POST'; // always POST; use filter for updates
 
-    const method = isUpdate ? 'PUT' : 'POST';
+      if (isUpdate) {
+        payload.filter = { "Id": rowId };
+      }
 
-    const res = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
 
 
       const text = await res.text();
