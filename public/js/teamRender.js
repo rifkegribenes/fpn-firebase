@@ -164,7 +164,7 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
         if (radio.value === key) {
           section.style.display = 'block';
           submitBtn.style.display = 'block';
-          updateDiv.style.display = 'none';
+          // updateDiv.style.display = 'none'; <== this hides radio question
           // Make visible section inputs required
           inputs.forEach(input => input.required = true);
         } else {
@@ -176,9 +176,57 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
     });
   });
 
- // Form submit
+
+  function generateRowId() {
+    return 'row_' + ([1e7]+-1e3+-4e3+-8e3+-1e11)
+      .replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+  }
+
+  function buildEditLink(rowId, teamName, updateType, title, body) {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const params = new URLSearchParams({
+      team: teamName,
+      id: rowId,
+      updateType: updateType || '',
+      title: title || '',
+      body: body || ''
+    });
+
+    // Return just the URL for the edit link
+    return `${baseUrl}?${params.toString()}`;
+  }
+
+
+
+  function prefillFormFromQuery() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const rowId = urlParams.get('id');
+    if (!rowId) return;
+
+    const updateType = urlParams.get('updateType');
+    const title = urlParams.get('title');
+    const body = urlParams.get('body');
+
+    // Set radio selection
+    if (updateType) {
+      const radio = document.querySelector(`input[name="entry.1192593661"][value="${updateType}"]`);
+      if (radio) radio.checked = true;
+      // Trigger section display logic
+      radio?.dispatchEvent(new Event('change'));
+    }
+
+    if (title) document.getElementById('entry_announcement_title').value = title;
+    if (body) document.getElementById('entry_announcement_body').value = body;
+  }
+
+
+  // Form submit
   document.getElementById('updateFormForm').addEventListener('submit', async (evt) => {
     evt.preventDefault();
+
+    const query = getQueryParams();
+    const rowId = query.id || generateRowId(); 
+    const isUpdate = !!query.id; 
 
     const selectedRadio = document.querySelector(
       'input[name="entry.1192593661"]:checked'
@@ -193,7 +241,7 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
         {
           // Timestamp is not set here, it's in the GWS Automations script attached to the sheet
           "Email Address": currentUser?.email || "",
-          "Your Team": getNormalizedTeamParam(),
+          "Your Team": teamObj.teamName,
           "What do you want to update?": selectedRadio.value,
 
           "Announcement Title":
@@ -218,8 +266,14 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
             document.getElementById('entry_banner_alt')?.value || "",
 
           "BannerPublicURL": "",
-          "Edit URL": "",
-          "Id": "",
+          "Edit URL": buildEditLink(
+              rowId,
+              teamObj.teamName,
+              selectedRadio.value,
+              document.getElementById('entry_announcement_title')?.value,
+              document.getElementById('entry_announcement_body')?.value
+            ),
+          "Id": rowId,
           "Delete URL": ""
         }
       ]
@@ -228,16 +282,25 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
     try {
       setLoading(true, 'Submitting…');
 
-      const res = await fetch(config.sheetdbUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
+      const url = isUpdate 
+      ? `${config.sheetdbUrl}/row/${rowId}`  // PUT for existing row
+      : config.sheetdbUrl;                   // POST for new row
+
+    const method = isUpdate ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
 
       const text = await res.text();
       let json;
+
+      console.log('response text', text);
 
       try {
         json = JSON.parse(text);
@@ -249,63 +312,246 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
         throw new Error(JSON.stringify(json));
       }
 
-      alert('Update submitted successfully!');
+      alert(isUpdate ? 'Edit saved successfully! Click Refresh Data to see updates' : 'Update submitted successfully! Click Refresh Data to see updates');
+
+      // Hide form / restore page
       onComplete();
+
+      const newRow = {
+        Id: rowId,
+        'Announcement Title': payload.data[0]['Announcement Title'],
+        'Announcement Body': payload.data[0]['Announcement Body'],
+        'Edit URL': payload.data[0]['Edit URL'],
+        'Delete URL': '', // or build delete URL if available
+        Timestamp: new Date().toISOString()
+      };
+
+      console.log('newRow', newRow);
+
+
+      // 1. Update cache & get the announcement object back
+      const announcement = upsertAnnouncementInCache(getNormalizedTeamParam(), newRow);
+
+      // 2. Append to UI immediately
+      if (announcement) {
+        const cachedData = getCachedData(getNormalizedTeamParam());
+        if (cachedData && cachedData.teamData) {
+          updateUIWithRow(cachedData.teamData, cachedData.auth, announcement);
+        }
+      }
 
     } catch (err) {
       alert('Submission failed: ' + err.message);
     } finally {
       setLoading(false);
     }
-  });
+  }); // close form submit handler
+
+} // close initUpdateForm()
+
+function normalizeUpdateType(value) {
+  console.log('normalizeUpdateType');
+  console.log(value);
+  const lower = (value || '').toLowerCase();
+  console.log(lower);
+  if (lower.includes('announcement')) return 'announcement';
+  if (lower.includes('minutes')) return 'minutes';
+  if (lower.includes('operations')) return 'ops';
+  if (lower.includes('banner')) return 'banner';
+
+  return value;
+}
 
 
+async function fetchUpdatedRow(rowId) {
+  try {
+    const res = await fetch(`${config.sheetdbUrl}/row/${rowId}`);
+    if (!res.ok) throw new Error('Failed to fetch updated row');
+    const data = await res.json();
+    return data[0]; // single row
+  } catch (err) {
+    console.error("Error fetching updated row:", err);
+    return null;
+  }
+}
 
+async function updateUIWithRow(row, data) {
+  if (!row) return;
 
+  const type = normalizeUpdateType(row['What do you want to update?']);
+  const team = data?.teamData?.teamObj || {};
+  const teamName = team?.teamName || getNormalizedTeamParam();
+
+  // --- Announcements ---
+  if (type === 'announcement') {
+    const announcementsDiv = document.getElementById('announcements');
+    if (!announcementsDiv) return;
+
+    // look for existing announcement (edit case)
+    const existing = announcementsDiv.querySelector(
+      `.announcement-item[data-id="${row.Id}"]`
+    );
+
+    const div = document.createElement('div');
+    div.className = 'announcement-item';
+
+    // store row id for future edits
+    div.dataset.id = row.Id;
+
+    div.innerHTML = `
+      <h4>${row['Announcement Title']}</h4>
+      <div class="date">${new Date().toLocaleString()}</div>
+      <div class="body">${row['Announcement Body']}</div>
+    `;
+
+    // Add admin links if editor
+    if (data.auth.isTeamPageEditor) {
+      const adminDiv = document.createElement('div');
+      adminDiv.className = 'announcement-admin links';
+
+      const editLink = document.createElement('a');
+      editLink.href = row['Edit URL'] || '#';
+      editLink.className = 'edit-link';
+      editLink.textContent = 'Edit';
+      editLink.dataset.prefillUrl = row['Edit URL'] || '';
+
+      editLink.addEventListener('click', async (evt) => {
+        evt.preventDefault();
+
+        const params = {};
+        editLink.dataset.prefillUrl
+          ?.split('?')[1]
+          ?.split('&')
+          .forEach(pair => {
+            const [k, v] = pair.split('=');
+            params[k] = decodeURIComponent(v || '');
+          });
+
+        const url = new URL(window.location);
+        Object.entries(params).forEach(([k, v]) =>
+          url.searchParams.set(k, v)
+        );
+        window.history.replaceState({}, '', url);
+
+        await showUpdateForm(data.teamData, params);
+      });
+
+      adminDiv.appendChild(editLink);
+      adminDiv.appendChild(document.createTextNode(' | '));
+
+      const deleteLink = document.createElement('a');
+      deleteLink.href = row['Delete URL'] || '#';
+      deleteLink.target = '_blank';
+      deleteLink.className = 'delete-link';
+      deleteLink.textContent = 'Delete';
+
+      adminDiv.appendChild(deleteLink);
+      div.appendChild(adminDiv);
+    }
+
+    // replace or prepend 
+    if (existing) {
+      existing.replaceWith(div);
+    } else {
+      announcementsDiv.prepend(div);
+    }
   }
 
 
+  // --- Meeting Minutes ---
+  if (type === 'meeting minutes') {
+    const minutesDiv = document.getElementById('minutes');
+    let ul = minutesDiv.querySelector('ul.icon-list');
+    if (!ul) {
+      ul = document.createElement('ul');
+      ul.classList.add('icon-list');
+      minutesDiv.innerHTML = '';
+      minutesDiv.appendChild(ul);
+    }
+
+    const li = document.createElement('li');
+    li.classList.add('icon-pdf');
+    const linkText = `${teamName} minutes ${new Date().toLocaleDateString()}`;
+    li.innerHTML = `<a href="${row['Upload your meeting minutes here (.pdf, .docx or URL to Google Document)']}" target="_blank">${linkText}</a>`;
+    ul.prepend(li);
+  }
+
+  // --- Operations Plan ---
+  if (type === 'operations plan') {
+    const opsDiv = document.getElementById('ops');
+    const url = row["Upload your team's operations plan here (.pdf, .docx or URL to Google Document)"];
+    if (url) {
+      opsDiv.innerHTML = `<ul class="icon-list"><li class="icon-pdf"><a href="${url}" target="_blank">${teamName} Operations Plan</a></li></ul>`;
+    } else {
+      opsDiv.innerHTML = `<p>No operations plan found for ${teamName}.</p>`;
+    }
+  }
+
+  // --- Banner ---
+  if (type === 'banner') {
+    const bannerDiv = document.getElementById('banner');
+    const bannerSection = document.getElementById('bannerSection');
+    const url = row['BannerPublicURL'];
+    const altText = row['Image alt text (brief image description for screen readers)'] || '';
+
+    if (url && bannerDiv && bannerSection) {
+      bannerSection.style.display = 'block';
+      bannerDiv.innerHTML = `
+        <div class="bannerImgCont">
+          <img class="bannerImg" src="${url}" alt="${altText}">
+        </div>
+      `;
+
+      if (data.auth.isTeamPageEditor) {
+        const currentUserEmail = data?.auth?.email || '';
+        const deleteBannerURL = `${config.backendUrl}?team=${teamName}&email=${currentUserEmail}&action=deleteBanner&fileUrl=${encodeURIComponent(url)}`;
+        const bannerAdminHTML = `
+          <div class="announcement-admin links" style="margin-top: 8px; font-size: 0.9em;">
+            <a href="#" class="edit-link">New Image</a>
+            &nbsp;|&nbsp;
+            <a href="${deleteBannerURL}" target="_blank" class="delete-link">Delete</a>
+          </div>
+        `;
+        bannerDiv.insertAdjacentHTML('beforeend', bannerAdminHTML);
+      }
+    }
+  }
+}
 
 
 
-async function showUpdateForm(teamData) {
-  const formMount = await waitForElement('#updateForm');
-  const teamContent = await waitForElement('#teamContent');
 
-  // Hide main content
+function getQueryParams() {
+    return Object.fromEntries(new URLSearchParams(window.location.search));
+  }
+
+async function showUpdateForm(teamData, prefill = {}) {
+  console.log('showUpdateForm');
+  console.log('prefill:', prefill);
+
+  const formMount = await waitForElement('#updateForm'); 
+  const teamContent = await waitForElement('#teamContent'); 
+
+  // Hide main content 
   teamContent.style.display = 'none';
 
-  // Render the form
+  // --- RENDER AND SHOW FORM ---
   formMount.innerHTML = renderUpdateFormHTML();
   formMount.style.display = 'block';
 
-  // --- AUTOFILL TEAM AND EMAIL ---
-  const teamParam = getNormalizedTeamParam(); // e.g., "fire"
-  const email = currentUser?.email || '';
-
-  // Team dropdown
+  // --- AUTOFILL TEAM & EMAIL ---
   const teamSelect = formMount.querySelector('select[name="entry.538407109"]');
-  if (teamSelect) {
-    // Add current team as the only option and select it
-    teamSelect.innerHTML = `<option value="${teamParam}" selected>${teamParam}</option>`;
-  }
+  if (teamSelect) teamSelect.innerHTML = `<option value="${teamParam}" selected>${teamParam}</option>`;
 
-  // Email input
   const emailInput = formMount.querySelector('input[type="email"][name="entry.123456789"]');
-  if (emailInput && email) {
-    emailInput.value = email;
-  }
+  if (emailInput && email) emailInput.value = email;
 
-  // Initialize radio/section behavior, prefill team & email
+  // --- INITIALIZE FORM LOGIC (radios & sections) ---
   initUpdateForm(
     async () => {
-      // Remove form
       formMount.innerHTML = '';
       formMount.style.display = 'none';
-
-      // Restore team page
       teamContent.style.display = 'block';
-
       const team = getNormalizedTeamParam();
       setLoading(true);
       try {
@@ -314,9 +560,30 @@ async function showUpdateForm(teamData) {
         setLoading(false);
       }
     },
-    teamData.teamObj,   
-    teamData.auth.email 
+    teamData.teamObj,
+    teamData.auth.email
   );
+
+  // --- PREFILL RADIO AND TEXT INPUTS AFTER LISTENERS ARE ATTACHED ---
+  const query = getQueryParams();
+  if (query.id) {
+    const ut = normalizeUpdateType(query.updateType);
+    const updateTypeRadio = Array.from(
+      formMount.querySelectorAll('input[name="entry.1192593661"]')
+    ).find(input => input.value.toLowerCase().includes(ut.toLowerCase()));
+
+    const titleInput = formMount.querySelector('#entry_announcement_title');
+    const bodyInput = formMount.querySelector('#entry_announcement_body');
+
+    if (updateTypeRadio) {
+      updateTypeRadio.checked = true;
+      // Use bubbles:true to ensure any delegated listeners catch it
+      updateTypeRadio.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (titleInput) titleInput.value = query.title || '';
+    if (bodyInput) bodyInput.value = query.body || '';
+  }
+
 }
 
 
@@ -390,7 +657,6 @@ export async function renderTeamPage(data) {
   ]);
 
   const refreshBtn = document.getElementById('refreshBtn');
-  refreshBtn.style.display = data.auth.isTeamPageEditor ? 'inline-block' : 'none';
 
   const team = data?.teamData?.teamObj || {};
   const teamName = data?.teamData?.teamObj?.teamName || getNormalizedTeamParam();
@@ -470,35 +736,85 @@ export async function renderTeamPage(data) {
   announcementsDiv.innerHTML = '';
   if (data?.teamData?.announcements?.length) {
     console.log('rendering announcements');
-    data?.teamData?.announcements.forEach(a => {
+    data.teamData.announcements.forEach(a => {
       const div = document.createElement('div');
       div.className = 'announcement-item';
 
-      let adminBlock = '';
-      if (data.auth.isTeamPageEditor) {
-        const currentUserEmail = data?.auth?.email || '';
-        const deleteURLWithParams = buildDeleteURL(a, teamName, currentUserEmail)
-        // const deleteURLWithParams = `${a.deleteURL}&team=${data.teamData?.teamObj.shortName}`;
-        adminBlock = `
-          <div class="announcement-admin links">
-            <a href="${a.editURL}" target="_blank" class="edit-link">Edit</a>
-            &nbsp;|&nbsp;
-            <a href="${deleteURLWithParams}" target="_blank" class="delete-link">Delete</a>
-          </div>
-        `;
-      }
-
+      // Add announcement content first
       div.innerHTML = `
         <h4>${a.title}</h4>
         <div class="date">${new Date(a.timestamp).toLocaleString()}</div>
         <div class="body">${a.body}</div>
-        ${adminBlock}
       `;
+
+      // --- create admin block if editor ---
+      if (data.auth.isTeamPageEditor) {
+        const adminDiv = document.createElement('div');
+        adminDiv.className = 'announcement-admin links';
+
+        // Edit link
+        const editLink = document.createElement('a');
+        editLink.href = a.editURL || '#';  // use stored link from sheet
+        console.log(`editLink.href: ${editLink.href}`);
+        editLink.className = 'edit-link';
+        editLink.textContent = 'Edit';
+
+        // store full prefill URL in dataset
+        editLink.dataset.prefillUrl = a.editURL || '';
+
+        editLink.addEventListener('click', async (evt) => {
+          console.log('editLink click');
+          evt.preventDefault();
+
+          const prefillUrl = editLink.dataset.prefillUrl;
+          console.log(editLink.dataset);
+          if (!prefillUrl) return;
+
+          // parse query params manually
+          const params = {};
+          prefillUrl.split('?')[1]?.split('&').forEach(pair => {
+            const [key, value] = pair.split('=');
+            params[key] = decodeURIComponent(value || '');
+          });
+          console.log('782');
+          // update URL without reload
+          const url = new URL(window.location);
+          console.log(url);
+          Object.entries(params).forEach(([k,v]) => url.searchParams.set(k,v));
+          window.history.replaceState({}, '', url);
+          console.log('should show update form here');
+          await showUpdateForm(data.teamData, params);
+        });
+
+
+
+        adminDiv.appendChild(editLink);
+
+        // separator
+        const sep = document.createTextNode(' | ');
+        adminDiv.appendChild(sep);
+
+        // Delete link (keep as-is)
+        const currentUserEmail = data?.auth?.email || '';
+        const deleteURLWithParams = buildDeleteURL(a, data.teamData.teamObj.shortName, currentUserEmail);
+        const deleteLink = document.createElement('a');
+        deleteLink.href = deleteURLWithParams;
+        deleteLink.target = '_blank';
+        deleteLink.className = 'delete-link';
+        deleteLink.textContent = 'Delete';
+        adminDiv.appendChild(deleteLink);
+
+        // append admin block **after** content
+        div.appendChild(adminDiv);
+      }
+
       announcementsDiv.appendChild(div);
     });
   } else {
-    announcementsDiv.innerHTML = `<p>No announcements found for ${team.teamName}.</p>`;
+    announcementsDiv.innerHTML = `<p>No announcements found for ${data.teamData.teamObj.shortName}.</p>`;
   }
+
+
 
   // --- Minutes ---
   minutesDiv.innerHTML = '';
@@ -623,7 +939,10 @@ export async function renderTeamPage(data) {
     });
 
 
-  }  
+  }
+
+  // Always attach refresh listener after rendering
+  attachRefreshListener();  
 
 }
 
@@ -944,6 +1263,51 @@ function getCachedData(team) {
   }
 }
 
+function upsertAnnouncementInCache(team, row) {
+  const key = `teamData_${team}`;
+  const raw = localStorage.getItem(key);
+  if (!raw) return;
+
+  try {
+    const cached = JSON.parse(raw);
+
+    const announcements =
+      cached?.data?.teamData?.announcements;
+
+    if (!Array.isArray(announcements)) return;
+
+    const announcement = {
+      id: row.Id || crypto.randomUUID(),
+      title: row['Announcement Title'],
+      body: row['Announcement Body'],
+      timestamp: row.Timestamp || new Date().toISOString(),
+      'Edit URL': row['Edit URL'],
+      deleteURL: row['Delete URL'] || ''
+    };
+
+
+    const index = announcements.findIndex(
+      a => a.id === announcement.id
+    );
+
+    if (index >= 0) {
+      announcements[index] = announcement;
+    } else {
+      announcements.unshift(announcement);
+    }
+
+    cached.timestamp = Date.now();
+    localStorage.setItem(key, JSON.stringify(cached));
+
+    return announcement;
+
+  } catch (err) {
+    console.warn('Cache update failed:', err);
+  }
+}
+
+
+
 function waitForElement(selector, timeout = 5000) {
   return new Promise((resolve, reject) => {
     const start = performance.now();
@@ -990,6 +1354,7 @@ function renderTeamLinks(links) {
  * Main init() — loads team data from backend, uses user email if logged in.
  */
 async function init(user = currentUser) {
+  console.log('INIT called ******************');
   const auth = window.firebaseAuth;
   // --- Wait for Firebase auth state if needed ---
   if (!user || !user.email) {
@@ -1037,7 +1402,11 @@ async function init(user = currentUser) {
     };
     renderTeamPage(safeData);
     setLoading(false);
-    attachRefreshListener();
+    if (!document.getElementById('refreshBtn').dataset.listenerAttached) {
+      attachRefreshListener();
+      document.getElementById('refreshBtn').dataset.listenerAttached = 'true';
+    }
+
     return;
   }
 
@@ -1074,7 +1443,7 @@ async function init(user = currentUser) {
     } catch (err) {
       console.error('Background refresh failed:', err);
     } finally {
-      clearTimeout(hideTimer);
+      // clearTimeout(hideTimer);
       showRefreshOverlay(false);
     }
 
@@ -1101,7 +1470,11 @@ async function init(user = currentUser) {
     console.error('Error loading team page data:', err);
   } finally {
     setLoading(false);
-    attachRefreshListener();
+    if (!document.getElementById('refreshBtn').dataset.listenerAttached) {
+      attachRefreshListener();
+      document.getElementById('refreshBtn').dataset.listenerAttached = 'true';
+    }
+
   }
 }
 
@@ -1111,12 +1484,16 @@ async function init(user = currentUser) {
 // --- Helper: attach refresh listener once ---
 function attachRefreshListener() {
   const refreshBtn = document.getElementById('refreshBtn');
-  if (refreshBtn && !refreshBtn.dataset.listenerAttached) {
-    refreshBtn.addEventListener('click', refreshData);
-    refreshBtn.dataset.listenerAttached = 'true';
-    console.log('Refresh button listener attached.');
-  }
+  if (!refreshBtn) return;
+
+  // Remove all existing click listeners
+  refreshBtn.replaceWith(refreshBtn.cloneNode(true));
+
+  const newBtn = document.getElementById('refreshBtn');
+  newBtn.addEventListener('click', refreshData);
+  console.log('Refresh button listener attached.');
 }
+
 
 // --- Helper: background refresh overlay with spinner ---
 function showRefreshOverlay(show) {
@@ -1176,27 +1553,49 @@ function showRefreshOverlay(show) {
  * Manually refresh data from backend.
  */
 async function refreshData() {
+  console.log('refreshData START ******************************');
   const refreshBtn = document.getElementById('refreshBtn');
   const team = getNormalizedTeamParam();
   if (!team) return;
 
+  // Prevent double refresh
+  if (refreshBtn.dataset.refreshing === 'true') {
+    console.log('Refresh already in progress, skipping...');
+    return;
+  }
+  refreshBtn.dataset.refreshing = 'true';
   refreshBtn.disabled = true;
-  refreshBtn.textContent = 'Refreshing...';
 
+  // Save original text
+  const originalText = refreshBtn.textContent;
+
+  console.log('showing refresh text and spinner');
+  // Show loading text + spinner
+  refreshBtn.innerHTML = `Refreshing... `;
+
+  // Clear cached team data
   localStorage.removeItem(`teamData_${team}`);
   console.log(`Cache cleared for team "${team}"`);
 
-  setLoading(true);
   try {
-    await init(currentUser);
+    console.log('calling INIT ******************************');
+    // Call init() without setting loading here; init() will manage the spinner itself
+    await init(currentUser); 
   } catch (err) {
     console.error('Error refreshing data:', err);
+    alert('Error refreshing data: ' + err.message);
   } finally {
+    console.log('refreshData FINALLY ******************************');
+    // Restore button
     refreshBtn.disabled = false;
-    refreshBtn.textContent = 'Refresh Data';
-    setLoading(false);
+    refreshBtn.textContent = originalText;
+    refreshBtn.dataset.refreshing = 'false';
+    console.log(`refreshBtn.dataset.refreshing: ${refreshBtn.dataset.refreshing}`);
   }
 }
+
+
+
 
 document.addEventListener('DOMContentLoaded', () => {
   const updateContainer = document.getElementById('teamUpdateContainer');

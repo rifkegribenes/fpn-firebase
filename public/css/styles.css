@@ -509,6 +509,20 @@ img.bannerImg {
     padding-bottom: 20px;
 }
 
+/* Small spinner inside refresh button */
+#refreshBtn[data-refreshing="true"]::after {
+  content: '';
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-left: 0.5em;
+  border: 2px solid #ccc;
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  vertical-align: middle;
+}
+
 /* ===== LOADING SPINNER ===== */
 #loadingSpinner {
   display: none;

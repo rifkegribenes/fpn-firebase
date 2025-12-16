@@ -177,29 +177,6 @@ function checkGroupMembership(groupEmail, userEmail) {
   return result;
 }
 
-// teamPageUpdate onChange
-function onChange(e) {
-  if (e.changeType !== 'INSERT_ROW') return;
-
-  const SHEET_NAME = 'TeamPageUpdateForm'; 
-  const sheet = e.source.getSheetByName(SHEET_NAME);
-  if (!sheet) return;
-
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return; // header only
-
-  const timestampCol = 1; // A
-  const timestampCell = sheet.getRange(lastRow, timestampCol);
-
-  // Only stamp rows that are truly new
-  if (timestampCell.getValue()) return;
-
-  timestampCell.setValue(new Date());
-}
-
-
-
-
 function getRecentAnnouncements(teamObj) {
   if (!teamObj) {
     safeLog('getRecentAnnouncements', 'error', `186: no team object sent to getRecentAnnouncements`);
@@ -221,10 +198,12 @@ function getRecentAnnouncements(teamObj) {
     throw new Error("Required columns are missing from the update your team page sheet.");
   }
 
-  // Filter rows where 'What do you want to update?' == 'Post announcement' and team matches function input
+  // Filter rows where 'What do you want to update?' includes'announcement' and team matches function input
   const announcementRows = data.slice(1).filter(row => {
     return row[UPDATE_TYPE_COL].includes('announcement') && row[TEAM_COL] === teamObj.teamName;
   });
+
+  safeLog('_Helpers: getRecentAnnouncements', 'info', `${teamObj.teamName} announcemntRows: ${announcementRows.length}`);
 
   // Sort by Timestamp descending
   announcementRows.sort((a, b) => {
