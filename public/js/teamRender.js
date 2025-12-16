@@ -1608,13 +1608,14 @@ function attachRefreshListener() {
   const refreshBtn = document.getElementById('refreshBtn');
   if (!refreshBtn) return;
 
-  // Remove all existing click listeners
-  refreshBtn.replaceWith(refreshBtn.cloneNode(true));
-
-  const newBtn = document.getElementById('refreshBtn');
-  newBtn.addEventListener('click', refreshData);
-  console.log('Refresh button listener attached.');
+  // just attach listener if not attached
+  if (!refreshBtn.dataset.listenerAttached) {
+    refreshBtn.addEventListener('click', refreshData);
+    refreshBtn.dataset.listenerAttached = 'true';
+    console.log('Refresh button listener attached.');
+  }
 }
+
 
 
 // --- Helper: background refresh overlay with spinner ---
@@ -1708,11 +1709,13 @@ async function refreshData() {
     alert('Error refreshing data: ' + err.message);
   } finally {
     console.log('refreshData FINALLY ******************************');
-    // Restore button
     refreshBtn.disabled = false;
-    refreshBtn.textContent = originalText;
     refreshBtn.dataset.refreshing = 'false';
-    console.log(`refreshBtn.dataset.refreshing: ${refreshBtn.dataset.refreshing}`);
+    // Restore original text after DOM updates by init()
+    setTimeout(() => {
+      refreshBtn.textContent = originalText;
+      console.log(`refreshBtn.dataset.refreshing: ${refreshBtn.dataset.refreshing}`);
+    }, 0);
   }
 }
 
