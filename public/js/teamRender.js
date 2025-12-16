@@ -440,20 +440,51 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
       setLoading(true, 'Submitting…');
 
       const url = `https://sheetdb.io/api/v1/ne0v0i21llmeh?sheet=TeamPageUpdateForm`;
-      const method = 'POST'; // always POST; use filter for updates
+      const method = isUpdate ? 'PUT' : 'POST';
+
+      const fetchOptions = {
+        method: isUpdate ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)  // now includes filter if updating
+      };
+
+      let res;
 
       if (isUpdate) {
-        payload.filter = { "Id": rowId };
+        const updateUrl = `https://sheetdb.io/api/v1/ne0v0i21llmeh/Id/${rowId}?sheet=TeamPageUpdateForm`;
+
+        res = await fetch(updateUrl, {
+          method: 'PATCH', 
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            data: [
+              {
+                "Announcement Title": document.getElementById('entry_announcement_title')?.value || "",
+                "Announcement Body": document.getElementById('entry_announcement_body')?.value || "",
+                "Edit URL": buildEditLink(
+                    rowId,
+                    teamObj.teamName,
+                    selectedRadio.value,
+                    document.getElementById('entry_announcement_title')?.value,
+                    document.getElementById('entry_announcement_body')?.value
+                ),
+                "Delete URL": ""
+              }
+            ]
+          })
+        });
+
+      } else {
+        res = await fetch(
+          'https://sheetdb.io/api/v1/ne0v0i21llmeh?sheet=TeamPageUpdateForm',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }
+        );
       }
 
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
 
 
       const text = await res.text();
