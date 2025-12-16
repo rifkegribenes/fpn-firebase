@@ -191,6 +191,7 @@ function getRecentAnnouncements(teamObj) {
   const TITLE_COL = headers.indexOf('Announcement Title');
   const BODY_COL = headers.indexOf('Announcement Body');
   const TEAM_COL = headers.indexOf('Your Team');
+  const ID_COL = headers.indexOf('Id');
   const EDIT_URL_COL = headers.indexOf('Edit URL');
   const DELETE_URL_COL = headers.indexOf('Delete URL');
 
@@ -216,6 +217,7 @@ function getRecentAnnouncements(teamObj) {
   // onFormSubmitHandler
   const recentAnnouncements = announcementRows.slice(0, 3).map(row => {
     return {
+      id: row[ID_COL],
       timestamp: new Date(row[TIMESTAMP_COL]),
       title: row[TITLE_COL],
       body: row[BODY_COL],

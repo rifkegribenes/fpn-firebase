@@ -28,6 +28,106 @@ function cacheKeyFor(team) {
   return `teamData_${team.toLowerCase()}`;
 }
 
+function normalizeAnnouncement(row) {
+  const announcement = {
+    id: row.id || row.Id,
+    title: row.title || row['Announcement Title'],
+    body: row.body || row['Announcement Body'],
+    timestamp: row.timestamp || row.Timestamp || new Date().toISOString(),
+    editURL: row.editURL || row['Edit URL'] || '',
+    deleteURL: row.deleteURL || row['Delete URL'] || ''
+  };
+
+  if (!announcement.id) {
+    console.error('normalizeAnnouncement: missing id', row);
+    return null;
+  }
+
+  return announcement;
+}
+
+
+function renderAnnouncements({
+  announcements,
+  container,
+  isEditor,
+  teamShortName,
+  teamData
+}) {
+  container.innerHTML = '';
+
+  if (!Array.isArray(announcements) || !announcements.length) {
+    container.innerHTML = `<p>No announcements found for ${teamShortName}.</p>`;
+    return;
+  }
+
+  announcements.forEach(raw => {
+    const a = normalizeAnnouncement(raw);
+    if (!a) return;
+
+    const div = document.createElement('div');
+    div.className = 'announcement-item';
+    div.dataset.id = a.id;
+
+    div.innerHTML = `
+      <h4>${a.title}</h4>
+      <div class="date">${new Date(a.timestamp).toLocaleString()}</div>
+      <div class="body">${a.body}</div>
+    `;
+
+    if (isEditor) {
+      const adminDiv = document.createElement('div');
+      adminDiv.className = 'announcement-admin links';
+
+      // --- Edit ---
+      const editLink = document.createElement('a');
+      editLink.href = a.editURL || '#';
+      editLink.textContent = 'Edit';
+      editLink.className = 'edit-link';
+      editLink.dataset.prefillUrl = a.editURL || '';
+
+      editLink.addEventListener('click', async (evt) => {
+        evt.preventDefault();
+        if (!a.editURL) return;
+
+        const params = {};
+        a.editURL.split('?')[1]?.split('&').forEach(pair => {
+          const [k, v] = pair.split('=');
+          params[k] = decodeURIComponent(v || '');
+        });
+
+        const url = new URL(window.location);
+        Object.entries(params).forEach(([k, v]) =>
+          url.searchParams.set(k, v)
+        );
+        window.history.replaceState({}, '', url);
+
+        await showUpdateForm(teamData, params);
+      });
+
+      adminDiv.appendChild(editLink);
+      adminDiv.appendChild(document.createTextNode(' | '));
+
+      // --- Delete ---
+      const deleteLink = document.createElement('a');
+      deleteLink.href = '#';
+      deleteLink.textContent = 'Delete';
+      deleteLink.className = 'delete-link';
+
+      deleteLink.addEventListener('click', (evt) => {
+        evt.preventDefault();
+        handleDeleteAnnouncement(a, teamShortName);
+      });
+
+      adminDiv.appendChild(deleteLink);
+      div.appendChild(adminDiv);
+    }
+
+    container.appendChild(div);
+  });
+}
+
+
 function renderUpdateFormHTML() {
   return `
   <div class="form-wrapper">
@@ -124,6 +224,62 @@ function renderUpdateFormHTML() {
 </div>`
 }
 
+async function handleDeleteAnnouncement(announcement, team) {
+  if (!confirm('Are you sure you want to delete this announcement?')) return;
+
+  const rowId = announcement?.id || announcement?.Id;
+
+  if (!rowId) {
+    console.error('Delete called with invalid announcement:', announcement);
+    alert('Delete failed: announcement ID missing');
+    return;
+  }
+
+  const url =
+    `https://sheetdb.io/api/v1/ne0v0i21llmeh/Id/${encodeURIComponent(rowId)}` +
+    `?sheet=TeamPageUpdateForm`;
+
+  try {
+    const res = await fetch(url, { method: 'DELETE' });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text);
+    }
+
+    /* -----------------------------
+       Remove from cache
+    ----------------------------- */
+    const key = `teamData_${team}`;
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const cached = JSON.parse(raw);
+      const list = cached?.data?.teamData?.announcements;
+      if (Array.isArray(list)) {
+        cached.data.teamData.announcements = list.filter(
+          a => a.id !== rowId
+        );
+        localStorage.setItem(key, JSON.stringify(cached));
+      }
+    }
+
+    /* -----------------------------
+       Remove from UI immediately
+    ----------------------------- */
+    const elem = document.querySelector(
+      `.announcement-item[data-id="${rowId}"]`
+    );
+    if (elem) elem.remove();
+
+    alert('Announcement deleted');
+
+  } catch (err) {
+    console.error('Delete failed:', err);
+    alert('Failed to delete announcement: ' + err.message);
+  }
+}
+
+
 function initUpdateForm(onComplete, teamObj, userEmail) {
   const radios = document.querySelectorAll('input[name="entry.1192593661"]');
   const submitBtn = document.getElementById('form_submit');
@@ -181,6 +337,7 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
     return 'row_' + ([1e7]+-1e3+-4e3+-8e3+-1e11)
       .replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
   }
+
 
   function buildEditLink(rowId, teamName, updateType, title, body) {
     const baseUrl = window.location.origin + window.location.pathname;
@@ -320,7 +477,7 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
       onComplete();
 
       const newRow = {
-        Id: rowId,
+        id: rowId,
         'Announcement Title': payload.data[0]['Announcement Title'],
         'Announcement Body': payload.data[0]['Announcement Body'],
         'Edit URL': payload.data[0]['Edit URL'],
@@ -334,13 +491,20 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
       // 1. Update cache & get the announcement object back
       const announcement = upsertAnnouncementInCache(getNormalizedTeamParam(), newRow);
 
-      // 2. Append to UI immediately
+      // 2. Re-render all announcements via the central function
       if (announcement) {
         const cachedData = getCachedData(getNormalizedTeamParam());
         if (cachedData && cachedData.teamData) {
-          updateUIWithRow(cachedData.teamData, cachedData.auth, announcement);
+          renderAnnouncements({
+            announcements: cachedData.teamData.announcements,
+            container: announcementsDiv,
+            isEditor: cachedData.auth.isTeamPageEditor,
+            teamShortName: cachedData.teamData.teamObj.shortName,
+            teamData: cachedData.teamData
+          });
         }
       }
+
 
     } catch (err) {
       alert('Submission failed: ' + err.message);
@@ -398,7 +562,7 @@ async function updateUIWithRow(row, data) {
     div.className = 'announcement-item';
 
     // store row id for future edits
-    div.dataset.id = row.Id;
+    div.dataset.id = row.Id || row.id;
 
     div.innerHTML = `
       <h4>${row['Announcement Title']}</h4>
@@ -441,11 +605,16 @@ async function updateUIWithRow(row, data) {
       adminDiv.appendChild(editLink);
       adminDiv.appendChild(document.createTextNode(' | '));
 
+      // Delete link
       const deleteLink = document.createElement('a');
-      deleteLink.href = row['Delete URL'] || '#';
-      deleteLink.target = '_blank';
-      deleteLink.className = 'delete-link';
+      deleteLink.href = '#';
       deleteLink.textContent = 'Delete';
+      deleteLink.className = 'delete-link';
+
+      deleteLink.addEventListener('click', (evt) => {
+        evt.preventDefault();
+        handleDeleteAnnouncement({ id: row.Id || row.id }, data.teamData.teamObj.shortName);
+      });
 
       adminDiv.appendChild(deleteLink);
       div.appendChild(adminDiv);
@@ -736,81 +905,13 @@ export async function renderTeamPage(data) {
 
   // --- Announcements ---
   announcementsDiv.innerHTML = '';
-  if (data?.teamData?.announcements?.length) {
-    console.log('rendering announcements');
-    data.teamData.announcements.forEach(a => {
-      const div = document.createElement('div');
-      div.className = 'announcement-item';
-
-      // Add announcement content first
-      div.innerHTML = `
-        <h4>${a.title}</h4>
-        <div class="date">${new Date(a.timestamp).toLocaleString()}</div>
-        <div class="body">${a.body}</div>
-      `;
-
-      // --- create admin block if editor ---
-      if (data.auth.isTeamPageEditor) {
-        const adminDiv = document.createElement('div');
-        adminDiv.className = 'announcement-admin links';
-
-        // Edit link
-        const editLink = document.createElement('a');
-        editLink.href = a.editURL || '#';  // use stored link from sheet
-        console.log(`editLink.href: ${editLink.href}`);
-        editLink.className = 'edit-link';
-        editLink.textContent = 'Edit';
-
-        // store full prefill URL in dataset
-        editLink.dataset.prefillUrl = a.editURL || '';
-
-        editLink.addEventListener('click', async (evt) => {
-          console.log('editLink click');
-          evt.preventDefault();
-
-          const prefillUrl = editLink.dataset.prefillUrl;
-          console.log(editLink.dataset);
-          if (!prefillUrl) return;
-
-          // parse query params manually
-          const params = {};
-          prefillUrl.split('?')[1]?.split('&').forEach(pair => {
-            const [key, value] = pair.split('=');
-            params[key] = decodeURIComponent(value || '');
-          });
-          console.log('782');
-          // update URL without reload
-          const url = new URL(window.location);
-          console.log(url);
-          Object.entries(params).forEach(([k,v]) => url.searchParams.set(k,v));
-          window.history.replaceState({}, '', url);
-          console.log('should show update form here');
-          await showUpdateForm(data.teamData, params);
-        });
-
-
-
-        adminDiv.appendChild(editLink);
-
-        // separator
-        const sep = document.createTextNode(' | ');
-        adminDiv.appendChild(sep);
-
-        // Delete link (keep as-is)
-        const currentUserEmail = data?.auth?.email || '';
-        const deleteURLWithParams = buildDeleteURL(a, data.teamData.teamObj.shortName, currentUserEmail);
-        const deleteLink = document.createElement('a');
-        deleteLink.href = deleteURLWithParams;
-        deleteLink.target = '_blank';
-        deleteLink.className = 'delete-link';
-        deleteLink.textContent = 'Delete';
-        adminDiv.appendChild(deleteLink);
-
-        // append admin block **after** content
-        div.appendChild(adminDiv);
-      }
-
-      announcementsDiv.appendChild(div);
+  if (data?.teamData?.announcements?.length || data?.announcements?.length) {
+    renderAnnouncements({
+      announcements: data.teamData.announcements,
+      container: announcementsDiv,
+      isEditor: data.auth.isTeamPageEditor,
+      teamShortName: data.teamData.teamObj.shortName,
+      teamData: data.teamData
     });
   } else {
     announcementsDiv.innerHTML = `<p>No announcements found for ${data.teamData.teamObj.shortName}.</p>`;
@@ -1268,45 +1369,33 @@ function getCachedData(team) {
 function upsertAnnouncementInCache(team, row) {
   const key = `teamData_${team}`;
   const raw = localStorage.getItem(key);
-  if (!raw) return;
+  if (!raw) return null;
 
   try {
     const cached = JSON.parse(raw);
+    const list = cached?.data?.teamData?.announcements;
+    if (!Array.isArray(list)) return null;
 
-    const announcements =
-      cached?.data?.teamData?.announcements;
+    const announcement = normalizeAnnouncement(row);
+    if (!announcement) return null;
 
-    if (!Array.isArray(announcements)) return;
-
-    const announcement = {
-      id: row.Id || crypto.randomUUID(),
-      title: row['Announcement Title'],
-      body: row['Announcement Body'],
-      timestamp: row.Timestamp || new Date().toISOString(),
-      'Edit URL': row['Edit URL'],
-      deleteURL: row['Delete URL'] || ''
-    };
-
-
-    const index = announcements.findIndex(
-      a => a.id === announcement.id
-    );
-
+    const index = list.findIndex(a => a.id === announcement.id);
     if (index >= 0) {
-      announcements[index] = announcement;
+      list[index] = announcement;
     } else {
-      announcements.unshift(announcement);
+      list.unshift(announcement);
     }
 
     cached.timestamp = Date.now();
     localStorage.setItem(key, JSON.stringify(cached));
 
     return announcement;
-
   } catch (err) {
     console.warn('Cache update failed:', err);
+    return null;
   }
 }
+
 
 
 
