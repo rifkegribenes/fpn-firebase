@@ -18,6 +18,10 @@ window.firebaseAuth = getAuth(app);
 // Initialize Auth provider
 const provider = new GoogleAuthProvider();
 
+// Request full Google Drive access
+provider.addScope('https://www.googleapis.com/auth/drive');
+
+
 function getNormalizedTeamParam() {
   const urlParams = new URLSearchParams(window.location.search);
   // default fallback empty string if no team specified
@@ -752,9 +756,63 @@ export async function renderTeamPage(data) {
 
       const linkText = `${team.teamName} minutes ${formattedDate}`;
       const url = `https://drive.google.com/file/d/${file.id}/view`;
-      li.innerHTML = `<a href="${url}" target="_blank">${linkText}</a>`;
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.textContent = linkText;
+      li.appendChild(link);  
+
+
+      // Trash icon for team page editors ---
+      if (currentUser?.isTeamPageEditor) {
+        const trash = document.createElement('span');
+        trash.className = 'trash-icon';
+        trash.innerHTML = '🗑️'; // or use a FontAwesome icon
+        trash.style.cursor = 'pointer';
+        trash.style.marginLeft = '8px';
+
+        // Click handler to delete row from Sheet & cache
+        trash.addEventListener('click', async () => {
+          if (!confirm(`Delete "${linkText}" from the team data?`)) return;
+
+          const teamParam = getNormalizedTeamParam();
+          try {
+            // DELETE row from SheetDB
+            const res = await fetch(`https://sheetdb.io/api/v1/YOUR_SHEET_ID/rows/${file.rowId}`, {
+              method: 'DELETE',
+            });
+            const dataRes = await res.json();
+
+            if (res.ok) {
+              console.log('Row deleted:', dataRes);
+
+              // Remove from cache
+              const cached = getCachedData(teamParam);
+              if (cached?.data?.minutes) {
+                cached.data.minutes = cached.data.minutes.filter(f => f.rowId !== file.rowId);
+                cacheData(teamParam, cached.data, cached.data.auth);
+              }
+
+              // Remove from DOM
+              li.remove();
+            } else {
+              console.error('Failed to delete row:', dataRes);
+              alert('Failed to delete file row. See console for details.');
+            }
+          } catch (err) {
+            console.error('Error deleting file row:', err);
+            alert('Error deleting file row: ' + err.message);
+          }
+        });
+
+        li.appendChild(trash);
+      }
+
       ul.appendChild(li);
+
     });
+
     minutesDiv.appendChild(ul);
   } else {
     minutesDiv.innerHTML = `<p>No minutes found for ${team.teamName}.</p>`;
@@ -1047,7 +1105,34 @@ function setupAuthUI() {
   const loginBtn = document.getElementById("loginBtn");
   const logoutBtn = document.getElementById("logoutBtn");
 
-  if (loginBtn) loginBtn.addEventListener('click', () => signInWithPopup(auth, provider));
+  if (loginBtn) {
+    loginBtn.addEventListener('click', async () => {
+      try {
+        const result = await signInWithPopup(auth, provider);
+
+        // The signed-in user info.
+        const user = result.user;
+        console.log('Logged in as', user.email);
+
+        // Google Access Token with Drive scopes
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        const accessToken = credential.accessToken;
+        console.log('Google Drive access token:', accessToken);
+
+        window.googleDriveAccessToken = accessToken;
+
+        // use this token to call Google Drive APIs directly:
+        // fetch('https://www.googleapis.com/drive/v3/files', { headers: { Authorization: `Bearer ${accessToken}` } })
+
+        currentUser = user;
+        updateAuthUI(user);
+
+      } catch (error) {
+        console.error('Login failed', error);
+        alert('Login failed: ' + error.message);
+      }
+    });
+  }
   if (logoutBtn) logoutBtn.addEventListener('click', () => signOut(auth));
 }
 
