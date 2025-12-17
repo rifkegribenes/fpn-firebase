@@ -4,6 +4,10 @@ export const config = {
   // staging // backendUrl: "https://script.google.com/macros/s/AKfycbw8f2ckH25-KqNXwNlNdv85g4L5x1q0HJrYKVuhlDGzHXKQPW1eG2lr3mETwyLQuzCjAA/exec",
   sheetdbUrl: "https://sheetdb.io/api/v1/ne0v0i21llmeh?sheet=TeamPageUpdateForm",
   DEPLOYMENT_ID: "AKfycbzv51l398A1ZWWpxFpCZOeYwt6gYiBDZN3izI3lkejN7LT3IhSBw1TO0J0KQT7G1SFhRg",
+  MINUTES_FOLDER_ID: '1Y2r6Ns7yWW8_A5hk2r7zXv550z7kiZLaeRF_ADahuzMkDjMA3g3p46vEyo-hxTMS4v4gmDwR',
+  OPS_FOLDER_ID: '1G3y3ClhqKS7mN2FrJ5z-7LwSgJRI4vp2BF07TJ33xemrc-sCLCDLd4pxPM4Hj-oUL4biQVFX',
+  BANNER_FOLDER_ID: '1MJnrpD2RV4ETcXdZaXHRZtUnuAWTRkEKKloAhmQMPI5o5uP4npqtPlu7PCsq3yafy3CvWzOa',
+
 
   firebase: {
     apiKey: "AIzaSyBqNQuv-POHcNGtU8WHmV0e-uKRlryIhIs",

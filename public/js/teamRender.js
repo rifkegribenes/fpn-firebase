@@ -221,6 +221,36 @@ function renderUpdateFormHTML() {
 </div>`
 }
 
+async function uploadFileToDrive(file, folderId) {
+  if (!file) return null;
+
+  const accessToken = gapi.auth.getToken().access_token; // assuming gapi is initialized and user logged in
+  const metadata = {
+    name: file.name,
+    parents: [folderId]
+  };
+
+  const form = new FormData();
+  form.append(
+    "metadata",
+    new Blob([JSON.stringify(metadata)], { type: "application/json" })
+  );
+  form.append("file", file);
+
+  const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + accessToken
+    },
+    body: form
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || 'File upload failed');
+  return data.webViewLink; // this is the URL to store in your sheet
+}
+
+
 async function handleDeleteAnnouncement(announcement, team) {
   if (!confirm('Are you sure you want to delete this announcement?')) return;
 
@@ -335,6 +365,41 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
       .replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
   }
 
+  function formatDateFileName(dateInput) {
+    if (!dateInput) return null;
+
+    // Accepts Date or YYYY-MM-DD string
+    const date = typeof dateInput === 'string'
+      ? new Date(dateInput + 'T00:00:00')
+      : new Date(dateInput);
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  }
+
+  function buildDriveFileName({
+    file,
+    team,
+    fileType,   // 'minutes' | 'ops' | 'banner'
+    meetingDate // string from input[type="date"] or null
+  }) {
+    const mtgDate = meetingDate
+      ? formatDateFileName(meetingDate)
+      : null;
+
+    const originalName = file.name;
+
+    if (mtgDate) {
+      return `${team}_${fileType}_${mtgDate}_${originalName}`;
+    }
+
+    return `${team}_${fileType}_${originalName}`;
+  }
+
+
 
   // Form submit
   document.getElementById('updateFormForm').addEventListener('submit', async (evt) => {
@@ -351,6 +416,67 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
       alert('Please select what to update');
       return;
     }
+
+    let minutesURL = '';
+    let opsURL = '';
+
+    if (selectedRadio.value === 'Upload meeting minutes') {
+      const meetingDate =
+        document.getElementById('entry_meeting_date')?.value;
+
+      const file =
+        document.getElementById('entry_meeting_upload')?.files[0];
+
+      const filename = buildDriveFileName({
+        file,
+        team: teamObj.shortName,
+        fileType: 'minutes',
+        meetingDate
+      });
+
+      const minutesFileId = await uploadFileToDrive(
+        file,
+        config.MINUTES_FOLDER_ID,
+        filename
+      );
+
+    if (selectedRadio.value === 'Upload operations plan') {
+      const file =
+        document.getElementById('entry_operations_plan')?.files[0];
+
+      const filename = buildDriveFileName({
+        file,
+        team: teamObj.shortName,
+        fileType: 'ops',
+        meetingDate: null
+      });
+
+      const opsFileId = await uploadFileToDrive(
+        file,
+        config.OPS_FOLDER_ID,
+        filename
+      );
+
+    }
+
+    if (selectedRadio.value === 'Upload banner photo here') {
+      const file =
+        document.getElementById('entry_banner_upload')?.files[0];
+
+      const filename = buildDriveFileName({
+        file,
+        team: teamObj.shortName,
+        fileType: 'banner',
+        meetingDate: null
+      });
+
+      const bannerFileId = await uploadFileToDrive(
+        file,
+        config.BANNER_FOLDER_ID,
+        filename
+      );
+    }
+
 
     const payload = {
       data: [
@@ -370,13 +496,13 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
             document.getElementById('entry_meeting_date')?.value || "",
 
           "Upload your meeting minutes here (.pdf, .docx or URL to Google Document)":
-            "",
+            minutesFileId || "",
 
           "Upload your team's operations plan here (.pdf, .docx or URL to Google Document)":
-            "",
+            opsFileId || "",
 
           "Upload banner photo here":
-            "",
+            bannerFileId || "",
 
           "Image alt text (brief image description for screen readers)":
             document.getElementById('entry_banner_alt')?.value || "",
