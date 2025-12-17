@@ -25,6 +25,7 @@ function getNormalizedTeamParam() {
 }
 
 function cacheKeyFor(team) {
+  console.log('cacheKeyFor called with:', team);
   return `teamData_${team.toLowerCase()}`;
 }
 
@@ -34,8 +35,8 @@ function normalizeAnnouncement(row) {
     title: row.title || row['Announcement Title'],
     body: row.body || row['Announcement Body'],
     timestamp: row.timestamp || row.Timestamp || new Date().toISOString(),
-    editURL: row.editURL || row['Edit URL'] || '',
-    deleteURL: row.deleteURL || row['Delete URL'] || ''
+    editURL: '',
+    deleteURL: ''
   };
 
   if (!announcement.id) {
@@ -81,28 +82,19 @@ function renderAnnouncements({
 
       // --- Edit ---
       const editLink = document.createElement('a');
-      editLink.href = a.editURL || '#';
+      editLink.href = '#';
       editLink.textContent = 'Edit';
       editLink.className = 'edit-link';
-      editLink.dataset.prefillUrl = a.editURL || '';
 
       editLink.addEventListener('click', async (evt) => {
         evt.preventDefault();
-        if (!a.editURL) return;
-
-        const params = {};
-        a.editURL.split('?')[1]?.split('&').forEach(pair => {
-          const [k, v] = pair.split('=');
-          params[k] = decodeURIComponent(v || '');
+        console.log('editLink click');
+        await showUpdateForm(teamData, {
+          id: a.id,
+          updateType: 'announcement',
+          title: a.title,
+          body: a.body
         });
-
-        const url = new URL(window.location);
-        Object.entries(params).forEach(([k, v]) =>
-          url.searchParams.set(k, v)
-        );
-        window.history.replaceState({}, '', url);
-
-        await showUpdateForm(teamData, params);
       });
 
       adminDiv.appendChild(editLink);
@@ -115,6 +107,7 @@ function renderAnnouncements({
       deleteLink.className = 'delete-link';
 
       deleteLink.addEventListener('click', (evt) => {
+        console.log('deleteLink click');
         evt.preventDefault();
         handleDeleteAnnouncement(a, teamShortName);
       });
@@ -250,7 +243,7 @@ async function handleDeleteAnnouncement(announcement, team) {
     /* -----------------------------
        Remove from cache
     ----------------------------- */
-    const key = `teamData_${team}`;
+    const key = cacheKeyFor(team);
     const raw = localStorage.getItem(key);
     if (raw) {
       const cached = JSON.parse(raw);
@@ -339,44 +332,6 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
   }
 
 
-  function buildEditLink(rowId, teamName, updateType, title, body) {
-    const baseUrl = window.location.origin + window.location.pathname;
-    const params = new URLSearchParams({
-      team: teamName,
-      id: rowId,
-      updateType: updateType || '',
-      title: title || '',
-      body: body || ''
-    });
-
-    // Return just the URL for the edit link
-    return `${baseUrl}?${params.toString()}`;
-  }
-
-
-
-  function prefillFormFromQuery() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const rowId = urlParams.get('id');
-    if (!rowId) return;
-
-    const updateType = urlParams.get('updateType');
-    const title = urlParams.get('title');
-    const body = urlParams.get('body');
-
-    // Set radio selection
-    if (updateType) {
-      const radio = document.querySelector(`input[name="entry.1192593661"][value="${updateType}"]`);
-      if (radio) radio.checked = true;
-      // Trigger section display logic
-      radio?.dispatchEvent(new Event('change'));
-    }
-
-    if (title) document.getElementById('entry_announcement_title').value = title;
-    if (body) document.getElementById('entry_announcement_body').value = body;
-  }
-
-
   // Form submit
   document.getElementById('updateFormForm').addEventListener('submit', async (evt) => {
     evt.preventDefault();
@@ -423,13 +378,7 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
             document.getElementById('entry_banner_alt')?.value || "",
 
           "BannerPublicURL": "",
-          "Edit URL": buildEditLink(
-              rowId,
-              teamObj.teamName,
-              selectedRadio.value,
-              document.getElementById('entry_announcement_title')?.value,
-              document.getElementById('entry_announcement_body')?.value
-            ),
+          "Edit URL": "",
           "Id": rowId,
           "Delete URL": ""
         }
@@ -461,13 +410,6 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
               {
                 "Announcement Title": document.getElementById('entry_announcement_title')?.value || "",
                 "Announcement Body": document.getElementById('entry_announcement_body')?.value || "",
-                "Edit URL": buildEditLink(
-                    rowId,
-                    teamObj.teamName,
-                    selectedRadio.value,
-                    document.getElementById('entry_announcement_title')?.value,
-                    document.getElementById('entry_announcement_body')?.value
-                ),
                 "Delete URL": ""
               }
             ]
@@ -560,169 +502,6 @@ function normalizeUpdateType(value) {
 }
 
 
-async function fetchUpdatedRow(rowId) {
-  try {
-    const res = await fetch(`${config.sheetdbUrl}/row/${rowId}`);
-    if (!res.ok) throw new Error('Failed to fetch updated row');
-    const data = await res.json();
-    return data[0]; // single row
-  } catch (err) {
-    console.error("Error fetching updated row:", err);
-    return null;
-  }
-}
-
-async function updateUIWithRow(row, data) {
-  if (!row) return;
-
-  const type = normalizeUpdateType(row['What do you want to update?']);
-  const team = data?.teamData?.teamObj || {};
-  const teamName = team?.teamName || getNormalizedTeamParam();
-
-  // --- Announcements ---
-  if (type === 'announcement') {
-    const announcementsDiv = document.getElementById('announcements');
-    if (!announcementsDiv) return;
-
-    // look for existing announcement (edit case)
-    const existing = announcementsDiv.querySelector(
-      `.announcement-item[data-id="${row.Id}"]`
-    );
-
-    const div = document.createElement('div');
-    div.className = 'announcement-item';
-
-    // store row id for future edits
-    div.dataset.id = row.Id || row.id;
-
-    div.innerHTML = `
-      <h4>${row['Announcement Title']}</h4>
-      <div class="date">${new Date().toLocaleString()}</div>
-      <div class="body">${row['Announcement Body']}</div>
-    `;
-
-    // Add admin links if editor
-    if (data.auth.isTeamPageEditor) {
-      const adminDiv = document.createElement('div');
-      adminDiv.className = 'announcement-admin links';
-
-      const editLink = document.createElement('a');
-      editLink.href = row['Edit URL'] || '#';
-      editLink.className = 'edit-link';
-      editLink.textContent = 'Edit';
-      editLink.dataset.prefillUrl = row['Edit URL'] || '';
-
-      editLink.addEventListener('click', async (evt) => {
-        evt.preventDefault();
-
-        const params = {};
-        editLink.dataset.prefillUrl
-          ?.split('?')[1]
-          ?.split('&')
-          .forEach(pair => {
-            const [k, v] = pair.split('=');
-            params[k] = decodeURIComponent(v || '');
-          });
-
-        const url = new URL(window.location);
-        Object.entries(params).forEach(([k, v]) =>
-          url.searchParams.set(k, v)
-        );
-        window.history.replaceState({}, '', url);
-
-        await showUpdateForm(data.teamData, params);
-      });
-
-      adminDiv.appendChild(editLink);
-      adminDiv.appendChild(document.createTextNode(' | '));
-
-      // Delete link
-      const deleteLink = document.createElement('a');
-      deleteLink.href = '#';
-      deleteLink.textContent = 'Delete';
-      deleteLink.className = 'delete-link';
-
-      deleteLink.addEventListener('click', (evt) => {
-        evt.preventDefault();
-        handleDeleteAnnouncement({ id: row.Id || row.id }, data.teamData.teamObj.shortName);
-      });
-
-      adminDiv.appendChild(deleteLink);
-      div.appendChild(adminDiv);
-    }
-
-    // replace or prepend 
-    if (existing) {
-      existing.replaceWith(div);
-    } else {
-      announcementsDiv.prepend(div);
-    }
-  }
-
-
-  // --- Meeting Minutes ---
-  if (type === 'meeting minutes') {
-    const minutesDiv = document.getElementById('minutes');
-    let ul = minutesDiv.querySelector('ul.icon-list');
-    if (!ul) {
-      ul = document.createElement('ul');
-      ul.classList.add('icon-list');
-      minutesDiv.innerHTML = '';
-      minutesDiv.appendChild(ul);
-    }
-
-    const li = document.createElement('li');
-    li.classList.add('icon-pdf');
-    const linkText = `${teamName} minutes ${new Date().toLocaleDateString()}`;
-    li.innerHTML = `<a href="${row['Upload your meeting minutes here (.pdf, .docx or URL to Google Document)']}" target="_blank">${linkText}</a>`;
-    ul.prepend(li);
-  }
-
-  // --- Operations Plan ---
-  if (type === 'operations plan') {
-    const opsDiv = document.getElementById('ops');
-    const url = row["Upload your team's operations plan here (.pdf, .docx or URL to Google Document)"];
-    if (url) {
-      opsDiv.innerHTML = `<ul class="icon-list"><li class="icon-pdf"><a href="${url}" target="_blank">${teamName} Operations Plan</a></li></ul>`;
-    } else {
-      opsDiv.innerHTML = `<p>No operations plan found for ${teamName}.</p>`;
-    }
-  }
-
-  // --- Banner ---
-  if (type === 'banner') {
-    const bannerDiv = document.getElementById('banner');
-    const bannerSection = document.getElementById('bannerSection');
-    const url = row['BannerPublicURL'];
-    const altText = row['Image alt text (brief image description for screen readers)'] || '';
-
-    if (url && bannerDiv && bannerSection) {
-      bannerSection.style.display = 'block';
-      bannerDiv.innerHTML = `
-        <div class="bannerImgCont">
-          <img class="bannerImg" src="${url}" alt="${altText}">
-        </div>
-      `;
-
-      if (data.auth.isTeamPageEditor) {
-        const currentUserEmail = data?.auth?.email || '';
-        const deleteBannerURL = `${config.backendUrl}?team=${teamName}&email=${currentUserEmail}&action=deleteBanner&fileUrl=${encodeURIComponent(url)}`;
-        const bannerAdminHTML = `
-          <div class="announcement-admin links" style="margin-top: 8px; font-size: 0.9em;">
-            <a href="#" class="edit-link">New Image</a>
-            &nbsp;|&nbsp;
-            <a href="${deleteBannerURL}" target="_blank" class="delete-link">Delete</a>
-          </div>
-        `;
-        bannerDiv.insertAdjacentHTML('beforeend', bannerAdminHTML);
-      }
-    }
-  }
-}
-
-
-
-
 function getQueryParams() {
     return Object.fromEntries(new URLSearchParams(window.location.search));
   }
@@ -767,24 +546,29 @@ async function showUpdateForm(teamData, prefill = {}) {
   );
 
   // --- PREFILL RADIO AND TEXT INPUTS AFTER LISTENERS ARE ATTACHED ---
-  const query = getQueryParams();
-  if (query.id) {
-    const ut = normalizeUpdateType(query.updateType);
+  if (prefill?.id) {
+    const ut = normalizeUpdateType(prefill.updateType);
+
     const updateTypeRadio = Array.from(
       formMount.querySelectorAll('input[name="entry.1192593661"]')
-    ).find(input => input.value.toLowerCase().includes(ut.toLowerCase()));
+    ).find(input =>
+      input.value.toLowerCase().includes(ut.toLowerCase())
+    );
 
     const titleInput = formMount.querySelector('#entry_announcement_title');
     const bodyInput = formMount.querySelector('#entry_announcement_body');
 
     if (updateTypeRadio) {
       updateTypeRadio.checked = true;
-      // Use bubbles:true to ensure any delegated listeners catch it
-      updateTypeRadio.dispatchEvent(new Event('change', { bubbles: true }));
+      updateTypeRadio.dispatchEvent(
+        new Event('change', { bubbles: true })
+      );
     }
-    if (titleInput) titleInput.value = query.title || '';
-    if (bodyInput) bodyInput.value = query.body || '';
+
+    if (titleInput) titleInput.value = prefill.title || '';
+    if (bodyInput) bodyInput.value = prefill.body || '';
   }
+
 
 }
 
@@ -865,13 +649,7 @@ export async function renderTeamPage(data) {
 
   title.innerText = team.teamName
   ? `${team.teamName} NET`
-  : 'Team Links';
-
-  // Set sidebar header
-  // const sidebarHeader = document.getElementById('sidebarHeader');
-  // if (sidebarHeader && data.teamData?.teamObj?.teamName) {
-  //   sidebarHeader.textContent = `${data.teamData?.teamObj?.teamName} NET`;
-  // }  
+  : 'Team Links'; 
 
   // --- Banner ---
   bannerDiv.innerHTML = '';
@@ -1224,8 +1002,7 @@ async function loadBackend(team, email = '') {
   teamContent.style.display = 'block';
 
   // Check cache
-  const cacheKey = team || 'teamlinks';
-  const cached = getCachedData(cacheKey);
+  const cached = getCachedData(team || 'teamlinks');
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     console.log('Using cached team page data:', cached.data);
 
@@ -1246,7 +1023,7 @@ async function loadBackend(team, email = '') {
     const data = await callBackend({ page: 'team', team, email });
     console.log('Fresh backend data:', data);
     if (data?.success) {
-      cacheData(cacheKey, data, data.auth);
+      cacheData(team, data, data.auth);
       const safeData = { teamData: data, auth: data.auth || {} };
       renderTeamPage(safeData);
     }
@@ -1257,54 +1034,6 @@ async function loadBackend(team, email = '') {
     attachRefreshListener();
   }
 
-}
-
-
-
-/**
- * Handle post-login success — clear cache, re-fetch backend, re-render.
- */
-
-async function handleLoginSuccess() {
-  const team = getNormalizedTeamParam();
-  const currentEmail = currentUser?.email;
-  const lastEmail = localStorage.getItem('lastUserEmail');
-  const auth = window.firebaseAuth;
-
-  console.log(`handleLoginSuccess() — current=${currentEmail}, last=${lastEmail}, team="${team}"`);
-
-  // Only clear cache if user changed
-  if (currentEmail && lastEmail && currentEmail !== lastEmail) {
-    console.log(`User changed from ${lastEmail} → ${currentEmail}, clearing cached team data.`);
-    localStorage.removeItem(`teamData_${team}`);
-  } else {
-    console.log(`handleLoginSuccess() — same user (${currentEmail}), keeping cached data.`);
-  }
-
-  // Store current user for next time
-  if (currentEmail) {
-    localStorage.setItem('lastUserEmail', currentEmail);
-  }
-
-  // Wait for Firebase to ensure user is ready
-  if (!currentUser) {
-    console.warn('handleLoginSuccess: currentUser not ready yet.');
-    await new Promise(resolve =>
-      onAuthStateChanged(auth, user => {
-        if (user) {
-          currentUser = user;
-          resolve();
-        }
-      })
-    );
-  }
-
-  // --- Force backend reload for this team with current user ---
-  // This ensures cached data is updated with correct admin/editor flags
-  await loadBackend(team, currentUser?.email);
-
-  // Re-init app with current user 
-  await init(currentUser);
 }
 
 
@@ -1333,6 +1062,10 @@ const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
  */
 function cacheData(team, data, auth) {
   if (!isLocalStorageAvailable()) return; // skip caching if localStorage not available
+  if (team.startsWith('teamdata_')) {
+    console.error('cacheData called with cache key instead of team:', team);
+    return;
+  }
   const key = cacheKeyFor(team);
 
   // Wrap the data along with auth info (if provided)
@@ -1355,8 +1088,13 @@ function cacheData(team, data, auth) {
 }
 
 function getCachedData(team) {
-  console.log('Current origin:', window.location.origin);
   if (!isLocalStorageAvailable()) return null; // skip if localStorage not available
+
+  if (team.startsWith('teamData_')) {
+    console.warn('getCachedData(): received cacheKey instead of team:', team);
+    team = team.replace(/^teamData_/, '');
+  }
+
   const key = cacheKeyFor(team);
   console.log('getCachedData(): checking key', key);
   console.log('Available localStorage keys:', Object.keys(localStorage));
@@ -1385,6 +1123,7 @@ function getCachedData(team) {
     const age = Date.now() - timestamp;
     if (age > CACHE_TTL) {
       console.log(`getCachedData(): cache expired (${Math.round(age / 1000)}s old) for "${key}"`);
+      localStorage.removeItem(key);
       return null;
     }
 
@@ -1398,7 +1137,7 @@ function getCachedData(team) {
 }
 
 function upsertAnnouncementInCache(team, row) {
-  const key = `teamData_${team}`;
+  const key = cacheKeyFor(team);
   const raw = localStorage.getItem(key);
   if (!raw) return null;
 
@@ -1475,7 +1214,9 @@ function renderTeamLinks(links) {
 /**
  * Main init() — loads team data from backend, uses user email if logged in.
  */
-async function init(user = currentUser) {
+async function init(user = currentUser, options = {}) {
+  const { skipMainSpinner = false } = options;
+
   console.log('INIT called ******************');
   const auth = window.firebaseAuth;
   // --- Wait for Firebase auth state if needed ---
@@ -1503,62 +1244,46 @@ async function init(user = currentUser) {
 
   if (!team) {
     console.log('init() skipped — no team param in URL.');
-    setLoading(false);
+    if (!skipMainSpinner) setLoading(false);
     return;
   }
 
   const effectiveEmail = user?.email || 'anonymous@public'; // default to anonymous
   console.log(`init() called — team=${team}, user=${effectiveEmail || 'anonymous'}`);
 
-  // fallback cache key
-  const cacheKey = cacheKeyFor(team) || cacheKeyFor('teamlinks');
-  const cached = getCachedData(cacheKey);
+  const cached = getCachedData(team);
   console.log('getCachedData() returned:', cached);
 
-  // --- CACHE FRESHNESS GUARD (skip redundant backend call) ---
-  const MAX_CACHE_AGE = 5 * 60 * 1000; // 5 minutes validity
-  if (cached && cached.timestamp && Date.now() - cached.timestamp < MAX_CACHE_AGE) {
-    const safeData = {
-      teamData: cached.data.teamData || cached.data, // fallback for old format
-      auth: cached.data.auth || { email: '', isAdmin: false, isTeamLead: false, isTeamPageEditor: false }
+
+  // --- CASE 1: Cached data exists (fresh per CACHE_TTL) ---
+  if (cached) {
+    console.log(`Using cached data for team "${team}"`);
+
+    const safeCachedData = {
+      teamData: cached.data.teamData,
+      auth: cached.data.auth || {}
     };
-    renderTeamPage(safeData);
-    setLoading(false);
+
+    renderTeamPage(safeCachedData);
+    if (!skipMainSpinner) setLoading(false);
+
+    // ensure refresh button works even on cache hit
     if (!document.getElementById('refreshBtn').dataset.listenerAttached) {
       attachRefreshListener();
       document.getElementById('refreshBtn').dataset.listenerAttached = 'true';
     }
 
-    return;
-  }
-
-
-  // --- CASE 1: Cached data exists (stale but renderable) ---
-  if (cached) {
-    console.log(`Using stale cached data for team "${team}" (background refresh will run).`);
-    console.log('Backend data:', cached.data);
-    console.log(cached);
-    const age = Date.now() - cached.timestamp;
-    if (age < MAX_CACHE_AGE) {
-      const safeData = {
-        teamData: cached.data.teamData,
-        auth: cached.data.auth || { email: '', isAdmin: false, isTeamLead: false, isTeamPageEditor: false }
-      };
-
-      renderTeamPage(safeData);
-      setLoading(false);
-      attachRefreshListener();
-      return; // stop, cache is fresh
-    }
 
     try {
       const effectiveEmail = currentUser?.email || '';
       const fresh = await callBackend({ team, email: effectiveEmail });
       console.log('Background refresh response:', fresh);
       if (fresh?.success) {
-        cacheData(cacheKey, fresh, fresh.auth);
+        cacheData(team, fresh, fresh.auth);
         const safeData = { teamData: fresh, auth: fresh.auth || {} };
-        renderTeamPage(safeData);
+        if (JSON.stringify(fresh) !== JSON.stringify(cached.data)) {
+          renderTeamPage(safeData);
+        }
       } else {
         console.warn('Background refresh returned unsuccessful response:', fresh);
       }
@@ -1566,7 +1291,7 @@ async function init(user = currentUser) {
       console.error('Background refresh failed:', err);
     } finally {
       // clearTimeout(hideTimer);
-      showRefreshOverlay(false);
+
     }
 
     return;
@@ -1574,13 +1299,13 @@ async function init(user = currentUser) {
 
   // --- CASE 2: No cache — fetch fresh data ---
   console.log('No cached data found — fetching fresh data from backend...');
-  setLoading(true);
+  if (!skipMainSpinner) setLoading(true);
   try {
     const effectiveEmail = currentUser?.email || '';
     const data = await callBackend({ team, email: effectiveEmail });
     console.log('Fresh backend response:', data);
     if (data?.success) {
-      cacheData(cacheKey, data, data.auth);
+      cacheData(team, data, data.auth);
       const safeData = { teamData: data, auth: data.auth || {} };
       console.log('backend data');
       console.log(safeData);
@@ -1591,7 +1316,7 @@ async function init(user = currentUser) {
   } catch (err) {
     console.error('Error loading team page data:', err);
   } finally {
-    setLoading(false);
+    if (!skipMainSpinner) setLoading(false);
     if (!document.getElementById('refreshBtn').dataset.listenerAttached) {
       attachRefreshListener();
       document.getElementById('refreshBtn').dataset.listenerAttached = 'true';
@@ -1613,62 +1338,6 @@ function attachRefreshListener() {
     refreshBtn.addEventListener('click', refreshData);
     refreshBtn.dataset.listenerAttached = 'true';
     console.log('Refresh button listener attached.');
-  }
-}
-
-
-
-// --- Helper: background refresh overlay with spinner ---
-function showRefreshOverlay(show) {
-  let overlay = document.getElementById('refreshOverlay');
-
-  if (show) {
-    if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.id = 'refreshOverlay';
-      overlay.innerHTML = `
-        <div class="refresh-spinner"></div>
-        <span>Refreshing…</span>
-      `;
-      Object.assign(overlay.style, {
-        position: 'fixed',
-        bottom: '16px',
-        right: '20px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        padding: '8px 14px',
-        background: 'rgba(0,0,0,0.7)',
-        color: '#fff',
-        borderRadius: '8px',
-        fontSize: '14px',
-        zIndex: '9999',
-        opacity: '0',
-        transition: 'opacity 0.3s ease'
-      });
-
-      const spinnerStyle = document.createElement('style');
-      spinnerStyle.textContent = `
-        .refresh-spinner {
-          width: 14px;
-          height: 14px;
-          border: 2px solid rgba(255,255,255,0.4);
-          border-top-color: #fff;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `;
-      document.head.appendChild(spinnerStyle);
-
-      document.body.appendChild(overlay);
-      requestAnimationFrame(() => (overlay.style.opacity = '1'));
-    }
-  } else if (overlay) {
-    overlay.style.opacity = '0';
-    setTimeout(() => overlay.remove(), 400);
   }
 }
 
@@ -1697,13 +1366,13 @@ async function refreshData() {
   refreshBtn.innerHTML = `Refreshing... `;
 
   // Clear cached team data
-  localStorage.removeItem(`teamData_${team}`);
+  localStorage.removeItem(cacheKeyFor(team));
   console.log(`Cache cleared for team "${team}"`);
 
   try {
     console.log('calling INIT ******************************');
     // Call init() without setting loading here; init() will manage the spinner itself
-    await init(currentUser); 
+    await init(currentUser, { skipMainSpinner: true });
   } catch (err) {
     console.error('Error refreshing data:', err);
     alert('Error refreshing data: ' + err.message);
