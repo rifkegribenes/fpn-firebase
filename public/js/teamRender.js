@@ -8,6 +8,8 @@ import {
   signOut, 
   GoogleAuthProvider 
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+let tokenClient = null;
+window.googleDriveAccessToken = null;
 
 // Initialize Firebase app
 const app = initializeApp(config.firebase);
@@ -221,10 +223,41 @@ function renderUpdateFormHTML() {
 </div>`
 }
 
+async function ensureDriveAccessToken() {
+  // Ensure token client exists
+  initGoogleDriveAuth();
+
+  if (!tokenClient) {
+    throw new Error('Google Drive auth not initialized');
+  }
+
+  // Reuse existing token
+  if (window.googleDriveAccessToken) {
+    return window.googleDriveAccessToken;
+  }
+
+  return new Promise((resolve, reject) => {
+    tokenClient.callback = (token) => {
+      if (!token || !token.access_token) {
+        reject(new Error('Failed to obtain Drive access token'));
+        return;
+      }
+
+      window.googleDriveAccessToken = token.access_token;
+      resolve(token.access_token);
+    };
+
+    tokenClient.requestAccessToken({ prompt: '' });
+  });
+}
+
+
+
 async function uploadFileToDrive(file, folderId) {
   if (!file) return null;
 
-  const accessToken = gapi.auth.getToken().access_token; // assuming gapi is initialized and user logged in
+  const accessToken = await ensureDriveAccessToken();
+
   const metadata = {
     name: file.name,
     parents: [folderId]
@@ -237,17 +270,24 @@ async function uploadFileToDrive(file, folderId) {
   );
   form.append("file", file);
 
-  const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink", {
-    method: "POST",
-    headers: {
-      "Authorization": "Bearer " + accessToken
-    },
-    body: form
-  });
+  let res;
+
+  try {
+    res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + accessToken
+      },
+      body: form
+    });
+  } catch(err) {
+    console.log(`uploadFileToDrive err: ${err}`)
+  };
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.error?.message || 'File upload failed');
-  return data.webViewLink; // this is the URL to store in your sheet
+
+  return data.id;
 }
 
 
@@ -417,8 +457,12 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
       return;
     }
 
-    let minutesURL = '';
-    let opsURL = '';
+    let minutesFileId = '';
+    let minutesUrl = '';
+    let opsFileId = '';
+    let opsUrl = '';
+    let bannerFileId = '';
+    let bannerUrl = '';
 
     if (selectedRadio.value === 'Upload meeting minutes') {
       const meetingDate =
@@ -434,11 +478,18 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
         meetingDate
       });
 
-      const minutesFileId = await uploadFileToDrive(
+      minutesFileId = await uploadFileToDrive(
         file,
         config.MINUTES_FOLDER_ID,
         filename
       );
+
+      minutesUrl = minutesFileId
+      ? `https://drive.google.com/open?id=${minutesFileId}`
+      : '';
+
+      console.log(`minutesUrl: ${minutesUrl}`);
+    }
 
     if (selectedRadio.value === 'Upload operations plan') {
       const file =
@@ -451,11 +502,15 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
         meetingDate: null
       });
 
-      const opsFileId = await uploadFileToDrive(
+      opsFileId = await uploadFileToDrive(
         file,
         config.OPS_FOLDER_ID,
         filename
       );
+
+      opsUrl = opsFileId
+      ? `https://drive.google.com/open?id=${opsFileId}`
+      : '';
 
     }
 
@@ -470,12 +525,16 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
         meetingDate: null
       });
 
-      const bannerFileId = await uploadFileToDrive(
+      bannerFileId = await uploadFileToDrive(
         file,
         config.BANNER_FOLDER_ID,
         filename
       );
     }
+
+    bannerUrl = bannerFileId
+      ? `https://drive.google.com/open?id=${bannerFileId}`
+      : '';
 
 
     const payload = {
@@ -496,21 +555,21 @@ function initUpdateForm(onComplete, teamObj, userEmail) {
             document.getElementById('entry_meeting_date')?.value || "",
 
           "Upload your meeting minutes here (.pdf, .docx or URL to Google Document)":
-            minutesFileId || "",
+            minutesUrl || "",
 
           "Upload your team's operations plan here (.pdf, .docx or URL to Google Document)":
-            opsFileId || "",
+            opsUrl || "",
 
           "Upload banner photo here":
-            bannerFileId || "",
+            bannerUrl || "",
 
           "Image alt text (brief image description for screen readers)":
             document.getElementById('entry_banner_alt')?.value || "",
 
-          "BannerPublicURL": "",
-          "Edit URL": "",
+          // "BannerPublicURL": "",
+          // "Edit URL": "",
           "Id": rowId,
-          "Delete URL": ""
+          // "Delete URL": ""
         }
       ]
     };
@@ -1599,6 +1658,22 @@ async function refreshData() {
   }
 }
 
+function initGoogleDriveAuth() {
+  if (tokenClient) return; // already initialized
+
+  if (!window.google || !google.accounts || !google.accounts.oauth2) {
+    console.warn('Google Identity Services not loaded yet');
+    return;
+  }
+
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: config.GOOGLE_OAUTH_CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/drive.file',
+    callback: () => {}
+  });
+
+  console.log('Google Drive token client initialized');
+}
 
 
 
@@ -1612,6 +1687,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Hook up login/logout buttons
   setupAuthUI();
+
 
   // DO NOT call loadBackend here.
   // Auth state listener will handle the initial load.

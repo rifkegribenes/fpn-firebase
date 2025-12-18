@@ -7,6 +7,7 @@ export const config = {
   MINUTES_FOLDER_ID: '1Y2r6Ns7yWW8_A5hk2r7zXv550z7kiZLaeRF_ADahuzMkDjMA3g3p46vEyo-hxTMS4v4gmDwR',
   OPS_FOLDER_ID: '1G3y3ClhqKS7mN2FrJ5z-7LwSgJRI4vp2BF07TJ33xemrc-sCLCDLd4pxPM4Hj-oUL4biQVFX',
   BANNER_FOLDER_ID: '1MJnrpD2RV4ETcXdZaXHRZtUnuAWTRkEKKloAhmQMPI5o5uP4npqtPlu7PCsq3yafy3CvWzOa',
+  GOOGLE_OAUTH_CLIENT_ID: '566556793461-i5fc3tpi87n220quut776aas2upcco3v.apps.googleusercontent.com',
 
 
   firebase: {
