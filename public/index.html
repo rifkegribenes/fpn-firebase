@@ -185,7 +185,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { config } from './js/config.js';
-    import './js/teamRender.js'; 
+    import './js/main.js'; 
 
     // --- Initialize Firebase ---
     const app = initializeApp(config.firebase);
@@ -196,7 +196,7 @@
     window.firebaseAuth = auth;
 
     document.addEventListener('DOMContentLoaded', () => {
-      console.log('index.html DOM loaded — teamRender.js is imported and will handle backend calls.');
+      console.log('index.html DOM loaded — main.js is imported and will handle backend calls.');
     });
   </script>
 
