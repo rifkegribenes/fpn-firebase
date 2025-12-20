@@ -177,7 +177,7 @@ export async function renderTeamPage(data, user) {
           const teamParam = getNormalizedTeamParam();
           try {
             // DELETE row from SheetDB
-            const res = await fetch(`https://sheetdb.io/api/v1/YOUR_SHEET_ID/rows/${file.rowId}`, {
+            const res = await fetch(`https://sheetdb.io/api/v1/ne0v0i21llmeh/rows/${file.rowId}`, {
               method: 'DELETE',
             });
             const dataRes = await res.json();

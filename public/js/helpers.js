@@ -80,11 +80,25 @@ export function waitForElement(selector, timeout = 5000) {
 }
 
 
-export function formatDate(dateString) {
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',  // "Jan", "Feb", ...
-    day: 'numeric',  // 1–31
-    year: 'numeric'  // 2025
-  }).format(date);
+export function toSpinalCase(str = '') {
+  return str
+    .replace(/([a-z])([A-Z])/g, '$1-$2')
+    .replace(/[\s_]+/g, '-')
+    .toLowerCase();
+}
+
+export function formatDateFileName(dateInput) {
+  const d = new Date(dateInput);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+export function formatDate(dateInput) {
+  return new Date(dateInput).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
 }
