@@ -1,4 +1,5 @@
 import { callBackend } from './api.js';
+import { getDriveFileId } from './helpers.js';
 
 // export async function fetchAuth(user) {
 //   const email = user?.email || '';
@@ -21,7 +22,7 @@ export async function fetchTeamData(team) {
 
   const teamObj = await globalLookup(team);
   const announcements = await fetchAnnouncements(team);
-  // const minutes = fetchMinutesFiles(team);
+  const minutes = await fetchMinutes(team);
   // const opsPlanLink = fetchOpsFile(team);
   // const banner = fetchBanner(team);
 
@@ -32,7 +33,7 @@ export async function fetchTeamData(team) {
       team,
       teamObj,
       announcements,
-      // minutes,
+      minutes,
       // opsPlanLink,
       // banner,
       // auth: {
@@ -101,9 +102,30 @@ export async function fetchAnnouncements(team) {
 //     .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp))[0] || null;
 // }
 
-// export function fetchMinutesFiles(team) {
+export async function fetchMinutes(team) {
+  const res = await fetch(
+    `https://sheetdb.io/api/v1/ne0v0i21llmeh/search` +
+    `?sheet=TeamPageUpdateForm` +
+    `&Your%20Team=${encodeURIComponent(team)}`
+  );
 
-// }
+  const rows = await res.json();
+
+  return rows
+    .filter(r =>
+      r['What do you want to update?']?.includes('minutes')
+    )
+    .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp))
+    .slice(0, 10)
+    .map(r => ({
+      id: getDriveFileId(r['Upload your meeting minutes here (.pdf, .docx or URL to Google Document)']) || '',
+      timestamp: r.Timestamp,
+      meetingDate: r['Date of meeting'],
+      fileUrl: r['Upload your meeting minutes here (.pdf, .docx or URL to Google Document)'] || '',
+      rowId: r.rowId 
+    }));
+}
+
 
 // export function fetchOpsFile(team) {
 

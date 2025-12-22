@@ -142,16 +142,9 @@ export async function renderTeamPage(data, user) {
       li.classList.add('icon-pdf')
       const createdDateStr = file.createdTime || null;
       let formattedDate = 'Unknown date';
-      let mtgDateParsed;
 
-      if (file.description) {
-        mtgDateParsed = file.description.split(",")[1] || null;
-      }
-      if (mtgDateParsed) {
-        formattedDate = formatDate(new Date(mtgDateParsed));
-      } else if (createdDateStr) {
-        const createdDate = new Date(createdDateStr);
-        formattedDate = formatDate(createdDate);
+      if (file.meetingDate) {
+        formattedDate = formatDate(file.meetingDate);
       }
 
       const linkText = `${team.teamName} minutes ${formattedDate}`;
@@ -167,9 +160,11 @@ export async function renderTeamPage(data, user) {
       if (data.auth?.isTeamPageEditor) {
         const trash = document.createElement('span');
         trash.className = 'trash-icon';
-        trash.innerHTML = '🗑️'; // or use a FontAwesome icon
-        trash.style.cursor = 'pointer';
-        trash.style.marginLeft = '8px';
+			  trash.style.cursor = 'pointer';
+			  trash.style.marginLeft = '8px';
+
+			  // Add Font Awesome trash icon
+			  trash.innerHTML = '<i class="fa fa-trash" style="color: #df683a;" aria-hidden="true"></i>';
 
         // Click handler to delete row from Sheet & cache
         trash.addEventListener('click', async () => {

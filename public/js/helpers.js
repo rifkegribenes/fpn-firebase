@@ -96,9 +96,32 @@ export function formatDateFileName(dateInput) {
 }
 
 export function formatDate(dateInput) {
-  return new Date(dateInput).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
+	console.log(`formatDate: ${dateInput}`);
+  const [year, month, day] = dateInput.split('-').map(Number);
+  const date = new Date(year, month - 1, day); // month is 0-indexed
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
+
+/**
+ * Extracts the Google Drive file ID from a URL.
+ * Supports:
+ * - https://drive.google.com/open?id=FILE_ID
+ * - https://drive.google.com/file/d/FILE_ID/view
+ * - https://drive.google.com/uc?id=FILE_ID
+ * @param {string} url
+ * @returns {string|null} file ID, or null if not found
+ */
+export function getDriveFileId(url) {
+  if (!url) return null;
+
+  // Regex matches different common formats
+  const match = url.match(
+    /(?:\/d\/|id=)([a-zA-Z0-9_-]{10,})/
+  );
+
+  return match ? match[1] : null;
+}
+
+// Example usage:
+const url = 'https://drive.google.com/open?id=1ipbT5oSiJrCzQ84o7MshSOQvjwsJ3K9anET8lGwaV5w';
+console.log(getDriveFileId(url)); // "1ipbT5oSiJrCzQ84o7MshSOQvjwsJ3K9anET8lGwaV5w"
