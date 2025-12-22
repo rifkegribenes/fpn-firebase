@@ -1,5 +1,5 @@
-import { setupAuthUI, listenAuthChanges, getCurrentUser, setCurrentUser } from './auth.js';
-import { callBackend } from './api.js';
+import { setupAuthUI, getCurrentUser, setCurrentUser } from './auth.js';
+import { fetchTeamLinks, fetchTeamData, fetchAuth } from './fetch.js';
 import { config } from './config.js';
 import { showUpdateForm, handleDeleteAnnouncement } from './submit.js';
 import { getNormalizedTeamParam, 
@@ -75,7 +75,8 @@ export async function renderTeamPage(data, user) {
       const currentUserEmail = data.auth.email || '';
 
       if (currentFileUrl) {
-        const deleteBannerURL = `${config.backendUrl}?team=${teamName}&email=${currentUserEmail}&action=deleteBanner&fileUrl=${encodeURIComponent(currentFileUrl)}`;
+      	let deleteBannerURL = "#";
+        // const deleteBannerURL = `${config.backendUrl}?team=${teamName}&email=${currentUserEmail}&action=deleteBanner&fileUrl=${encodeURIComponent(currentFileUrl)}`;
         const bannerAdminHTML = `
           <div class="announcement-admin links" style="margin-top: 8px; font-size: 0.9em;">
             <a href="https://docs.google.com/forms/d/e/1FAIpQLSe9TU8URPswEVELyy9jOImY2_2vJ9OOE7O8L5JlNUuiJzPQYQ/viewform?usp=pp_url&entry.1458714000=${encodeURIComponent(teamName)}" target="_blank" class="edit-link">New Image</a>
@@ -163,7 +164,7 @@ export async function renderTeamPage(data, user) {
       li.appendChild(link);  
 
       // Trash icon for team page editors ---
-      if (user.isTeamPageEditor) {
+      if (data.auth?.isTeamPageEditor) {
         const trash = document.createElement('span');
         trash.className = 'trash-icon';
         trash.innerHTML = '🗑️'; // or use a FontAwesome icon
@@ -423,14 +424,29 @@ export async function loadBackend(team, user = null) {
 
     // Fetch fresh
     try {
-      const fresh = await callBackend();
-      if (fresh?.success && Array.isArray(fresh.teamLinks)) {
-        cacheData(pseudoTeamKey, fresh, fresh.auth);
-        renderTeamLinks(fresh.teamLinks);
-      } else {
-        document.getElementById('teamLinks').innerHTML =
-          '<p>No teams found.</p>';
-      }
+      const [teamLinks, authRes] = await Promise.all([
+			  fetchTeamLinks(),
+			  fetchAuth()
+			]);
+
+			if (Array.isArray(teamLinks) && teamLinks.length) {
+			  const payload = {
+			    teamData: { teamLinks },
+			    auth: authRes || {
+					  email: '',
+					  isAdmin: false,
+					  isTeamLead: false,
+					  isTeamPageEditor: false
+					}
+				};
+
+
+			  cacheData(pseudoTeamKey, payload.teamData, payload.auth);
+			  renderTeamLinks(teamLinks);
+			} else {
+			  document.getElementById('teamLinks').innerHTML =
+			    '<p>No teams found.</p>';
+			}
     } catch (err) {
       console.error('Error fetching team links:', err);
       document.getElementById('teamLinks').innerHTML =
@@ -469,20 +485,34 @@ export async function loadBackend(team, user = null) {
 
   // No cache or stale → call backend
   try {
-    const data = await callBackend({ page: 'team', team, email });
-    console.log('Fresh backend data:', data);
-    if (data?.success) {
-      cacheData(team, data, data.auth);
-      const safeData = { teamData: data, auth: data.auth || {} };
-      renderTeamPage(safeData, user);
-    }
+    const [teamData, authRes] = await Promise.all([
+	  fetchTeamData(team),
+	  fetchAuth()
+	]);
+
+	if (!teamData) {
+	  throw new Error('Team not found');
+	}
+
+	const payload = {
+	  teamData,
+	  auth: authRes || {
+	    email: '',
+	    isAdmin: false,
+	    isTeamLead: false,
+	    isTeamPageEditor: false
+	  }
+	};
+
+	cacheData(team, teamData, payload.auth);
+	renderTeamPage(payload, user);
+
   } catch (err) {
     console.error('Error fetching team page:', err);
   } finally {
     setLoading(false);
     attachRefreshListener();
   }
-
 }
 
 // --- Helper: attach refresh listener once ---
@@ -670,112 +700,6 @@ function renderTeamLinks(links) {
   });
 }
 
-
-/**
- * Main init() — loads team data from backend, uses user email if logged in.
- */
-async function init(user = null, options = {}) { 
-  const { skipMainSpinner = false } = options;
-  const auth = window.firebaseAuth;
-
-  // Wait for Firebase auth if user not provided or missing email
-  if (!user || !user?.email) {
-    // wait for Firebase auth
-    user = await new Promise(resolve => {
-      const unsubscribe = onAuthStateChanged(auth, fbUser => {
-        unsubscribe();
-        resolve(fbUser || null);
-      });
-    });
-    setCurrentUser(user);   // now user is guaranteed fresh
-  }
-
-  // --- BASIC PARAM SETUP ---
-  const team = getNormalizedTeamParam();
-
-  if (!team) {
-    console.log('init() skipped — no team param in URL.');
-    if (!skipMainSpinner) setLoading(false);
-    return;
-  }
-
-  const effectiveEmail = user?.email || 'anonymous@public'; // default to anonymous
-  console.log(`init() called — team=${team}, user=${effectiveEmail || 'anonymous'}`);
-
-  const cached = getCachedData(team);
-  console.log('getCachedData() returned:', cached);
-
-
-  // --- CASE 1: Cached data exists (fresh per CACHE_TTL) ---
-  if (cached) {
-    console.log(`Using cached data for team "${team}"`);
-
-    const safeCachedData = {
-      teamData: cached.data.teamData,
-      auth: cached.data.auth || {}
-    };
-
-    renderTeamPage(safeCachedData, user);
-    if (!skipMainSpinner) setLoading(false);
-
-    // ensure refresh button works even on cache hit
-    if (!document.getElementById('refreshBtn').dataset.listenerAttached) {
-      attachRefreshListener();
-      document.getElementById('refreshBtn').dataset.listenerAttached = 'true';
-    }
-
-
-    try {
-      const effectiveEmail = user?.email || '';
-      const fresh = await callBackend({ team, email: effectiveEmail });
-      console.log('Background refresh response:', fresh);
-      if (fresh?.success) {
-        cacheData(team, fresh, fresh.auth);
-        const safeData = { teamData: fresh, auth: fresh.auth || {} };
-        if (JSON.stringify(fresh) !== JSON.stringify(cached.data)) {
-          renderTeamPage(safeData, user);
-        }
-      } else {
-        console.warn('Background refresh returned unsuccessful response:', fresh);
-      }
-    } catch (err) {
-      console.error('Background refresh failed:', err);
-    } finally {
-      // clearTimeout(hideTimer);
-
-    }
-
-    return;
-  }
-
-  // --- CASE 2: No cache — fetch fresh data ---
-  console.log('No cached data found — fetching fresh data from backend...');
-  if (!skipMainSpinner) setLoading(true);
-  try {
-  	const effectiveEmail = user?.email || '';
-    const data = await callBackend({ team, email: effectiveEmail });
-    console.log('Fresh backend response:', data);
-    if (data?.success) {
-      cacheData(team, data, data.auth);
-      const safeData = { teamData: data, auth: data.auth || {} };
-      console.log('backend data');
-      console.log(safeData);
-      renderTeamPage(safeData, user);
-    } else {
-      console.warn('Backend call returned unsuccessful response:', data);
-    }
-  } catch (err) {
-    console.error('Error loading team page data:', err);
-  } finally {
-    if (!skipMainSpinner) setLoading(false);
-    if (!document.getElementById('refreshBtn').dataset.listenerAttached) {
-      attachRefreshListener();
-      document.getElementById('refreshBtn').dataset.listenerAttached = 'true';
-    }
-
-  }
-}
-
 /**
  * Manually refresh data from backend.
  */
@@ -805,9 +729,8 @@ async function refreshData() {
   console.log(`Cache cleared for team "${team}"`);
 
   try {
-    console.log('calling INIT ******************************');
-    // Call init() without setting loading here; init() will manage the spinner itself
-    await init(getCurrentUser(), { skipMainSpinner: true });
+    console.log('calling loadBackend ******************************');
+    await loadBackend(team, getCurrentUser());
   } catch (err) {
     console.error('Error refreshing data:', err);
     alert('Error refreshing data: ' + err.message);

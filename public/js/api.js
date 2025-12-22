@@ -26,11 +26,7 @@ export async function callBackend(params = {}) {
 
   try {
     // Fetch response
-    const res = await fetch(url, {
-      method: 'GET',
-      redirect: 'follow',
-      headers: shouldBypassCache ? { 'Cache-Control': 'no-cache' } : {}
-    });
+    const res = await fetch(url);
 
     // Debug log for raw Response object
     console.log('Server raw Response:', res);

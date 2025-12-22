@@ -1,10 +1,21 @@
-const auth = await fetch('/auth').then(r => r.json());
+import { callBackend } from './api.js';
+
+export async function fetchAuth() {
+  const data = await callBackend({ action: 'auth' });
+
+  return {
+    email: data?.email || '',
+    isAdmin: false,
+    isTeamLead: false,
+    isTeamPageEditor: false
+  };
+}
 
 
 export async function fetchTeamData(team) {
 
-  const teamObj = globalLookup(team);
-  const announcements = fetchAnnouncements(team);
+  const teamObj = await globalLookup(team);
+  const announcements = await fetchAnnouncements(team);
   // const minutes = fetchMinutesFiles(team);
   // const opsPlanLink = fetchOpsFile(team);
   // const banner = fetchBanner(team);
