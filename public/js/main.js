@@ -1,5 +1,5 @@
 import { setupAuthUI, getCurrentUser, setCurrentUser } from './auth.js';
-import { fetchTeamLinks, fetchTeamData, fetchAuth } from './fetch.js';
+import { fetchTeamLinks, fetchTeamData, deriveAuthFromEmail } from './fetch.js';
 import { config } from './config.js';
 import { showUpdateForm, handleDeleteAnnouncement } from './submit.js';
 import { getNormalizedTeamParam, 
@@ -426,7 +426,7 @@ export async function loadBackend(team, user = null) {
     try {
       const [teamLinks, authRes] = await Promise.all([
 			  fetchTeamLinks(),
-			  fetchAuth()
+			  deriveAuthFromEmail(user?.email || '')
 			]);
 
 			if (Array.isArray(teamLinks) && teamLinks.length) {
@@ -487,7 +487,7 @@ export async function loadBackend(team, user = null) {
   try {
     const [teamData, authRes] = await Promise.all([
 	  fetchTeamData(team),
-	  fetchAuth()
+	  deriveAuthFromEmail(user?.email || '')
 	]);
 
 	if (!teamData) {

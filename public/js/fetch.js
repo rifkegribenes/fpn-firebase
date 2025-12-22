@@ -1,15 +1,20 @@
 import { callBackend } from './api.js';
 
-export async function fetchAuth() {
-  const data = await callBackend({ action: 'auth' });
+// export async function fetchAuth(user) {
+//   const email = user?.email || '';
 
-  return {
-    email: data?.email || '',
-    isAdmin: false,
-    isTeamLead: false,
-    isTeamPageEditor: false
-  };
-}
+//   const data = await callBackend({
+//     action: 'auth',
+//     email
+//   });
+
+//   return {
+//     email,
+//     isAdmin: !!data?.isAdmin,
+//     isTeamLead: !!data?.isTeamLead,
+//     isTeamPageEditor: !!data?.isTeamPageEditor
+//   };
+// }
 
 
 export async function fetchTeamData(team) {
@@ -115,4 +120,38 @@ export async function fetchTeamLinks() {
     shortName: r['Short name']
   }));
 }
+
+
+/** EDIT THESE LISTS ONLY */
+const ADMIN_EMAILS = [
+  "admin@friendsofportlandnet.org", 
+  "bec@friendsofportlandnet.org", 
+  "carolyn@friendsofportlandnet.org", 
+  "sarah1@friendsofportlandnet.org"
+];
+
+const TEAM_LEAD_REGEX = /^tl\.[^@]+@friendsofportlandnet\.org$/i;
+
+/**
+ * Derive all auth flags from a single email
+ */
+export function deriveAuthFromEmail(email = '') {
+  const normalized = email.trim().toLowerCase();
+
+  const isAdmin = ADMIN_EMAILS.includes(normalized);
+
+  const isTeamLead =
+    TEAM_LEAD_REGEX.test(normalized) || isAdmin;
+
+  // Option A: editors include TLs + admins
+  const isTeamPageEditor = isTeamLead || isAdmin;
+
+  return {
+    email: normalized,
+    isAdmin,
+    isTeamLead,
+    isTeamPageEditor
+  };
+}
+
 
