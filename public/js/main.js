@@ -57,18 +57,8 @@ export async function renderTeamPage(data, user) {
   // --- Banner ---
   bannerDiv.innerHTML = '';
   const bannerData = data?.teamData?.banner[0];
-  console.log(data);
-  console.log(data.teamData);
-  console.log(data.teamData.banner);
-  console.log(data.teamData.banner[0]);
-  console.log(data.teamData.banner[0].id);
-  console.log(`bannerData`);
-  console.log(bannerData);
 
   if (bannerData && bannerData.publicUrl) {
-  	console.log(`bannerData MAIN.js 63 #########################`);
-  	console.log(bannerData);
-    console.log('rendering banner');
     bannerSection.style.display = 'block';
     bannerDiv.innerHTML = `
       <div class="bannerImgCont">
@@ -78,23 +68,63 @@ export async function renderTeamPage(data, user) {
 
     // Add admin links after the image
     if (data.auth.isTeamPageEditor) {
-      const bannerImg = bannerDiv.querySelector('img.bannerImg'); // query inside bannerDiv
-      const currentFileUrl = bannerImg ? bannerImg.src : null;
-      const currentUserEmail = data.auth.email || '';
+		  const bannerImg = bannerDiv.querySelector('img.bannerImg'); // query inside bannerDiv
+		  const currentFileUrl = bannerImg ? bannerImg.src : null;
+		  const currentUserEmail = data.auth.email || '';
 
-      if (currentFileUrl) {
-      	let deleteBannerURL = "#";
-        // const deleteBannerURL = `${config.backendUrl}?team=${teamName}&email=${currentUserEmail}&action=deleteBanner&fileUrl=${encodeURIComponent(currentFileUrl)}`;
-        const bannerAdminHTML = `
-          <div class="announcement-admin links" style="margin-top: 8px; font-size: 0.9em;">
-            <a href="https://docs.google.com/forms/d/e/1FAIpQLSe9TU8URPswEVELyy9jOImY2_2vJ9OOE7O8L5JlNUuiJzPQYQ/viewform?usp=pp_url&entry.1458714000=${encodeURIComponent(teamName)}" target="_blank" class="edit-link">New Image</a>
-            &nbsp;|&nbsp;
-            <a href="${deleteBannerURL}" target="_blank" class="delete-link">Delete</a>
-          </div>
-        `;
-        bannerDiv.insertAdjacentHTML('beforeend', bannerAdminHTML);
-      }
-    }
+	  if (currentFileUrl) {
+	    const adminDiv = document.createElement('div');
+	    adminDiv.className = 'announcement-admin links';
+	    adminDiv.style.marginTop = '8px';
+	    adminDiv.style.fontSize = '0.9em';
+
+	    // --- Edit / New Image ---
+	    const editLink = document.createElement('a');
+	    editLink.href = `https://docs.google.com/forms/d/e/1FAIpQLSe9TU8URPswEVELyy9jOImY2_2vJ9OOE7O8L5JlNUuiJzPQYQ/viewform?usp=pp_url&entry.1458714000=${encodeURIComponent(teamName)}`;
+	    editLink.target = '_blank';
+	    editLink.className = 'edit-link';
+	    editLink.innerHTML = '<i class="fa fa-edit" style="color: #df683a;" aria-hidden="true"></i>';
+	    adminDiv.appendChild(editLink);
+
+	    adminDiv.appendChild(document.createTextNode(' | '));
+
+	    // --- Delete / Trash ---
+	    const trash = document.createElement('span');
+	    trash.className = 'delete-link';
+	    trash.style.cursor = 'pointer';
+	    trash.innerHTML = '<i class="fa fa-trash" style="color: #df683a;" aria-hidden="true"></i>';
+
+	    // Click handler to delete banner row from SheetDB (or backend)
+	    trash.addEventListener('click', async () => {
+	      if (!confirm(`Delete banner for "${teamName}"?`)) return;
+
+	      const teamParam = getNormalizedTeamParam();
+	      try {
+	        const res = await fetch(
+	          `https://sheetdb.io/api/v1/ne0v0i21llmeh/Id/${encodeURIComponent(file.rowId)}` +
+	          `?sheet=TeamPageUpdateForm`,
+	          { method: 'DELETE' }
+	        );
+	        const dataRes = await res.json();
+
+	        if (res.ok) {
+	          console.log('Banner row deleted:', dataRes);
+	          bannerDiv.innerHTML = ''; // Remove banner and admin UI
+	        } else {
+	          console.error('Failed to delete banner row:', dataRes);
+	          alert('Failed to delete banner. See console for details.');
+	        }
+	      } catch (err) {
+	        console.error('Error deleting banner row:', err);
+	        alert('Error deleting banner: ' + err.message);
+	      }
+	    });
+
+	    adminDiv.appendChild(trash);
+	    bannerDiv.appendChild(adminDiv);
+		  }
+		}
+
   }
 
 
@@ -268,71 +298,71 @@ export async function renderTeamPage(data, user) {
 
 
   // --- Operations Plan ---
-opsDiv.innerHTML = '';
-if (data?.teamData?.opsPlanFile && data?.teamData?.opsPlanFile[0]?.id) {
-  const file = data.teamData?.opsPlanFile[0];
-  const linkText = `${team.teamName} Operations Plan`;
-  const url = `https://drive.google.com/file/d/${file.id}/view`;
+	opsDiv.innerHTML = '';
+	if (data?.teamData?.opsPlanFile && data?.teamData?.opsPlanFile[0]?.id) {
+	  const file = data.teamData?.opsPlanFile[0];
+	  const linkText = `${team.teamName} Operations Plan`;
+	  const url = `https://drive.google.com/file/d/${file.id}/view`;
 
-  const ul = document.createElement('ul');
-  ul.classList.add('icon-list');
+	  const ul = document.createElement('ul');
+	  ul.classList.add('icon-list');
 
-  const li = document.createElement('li');
-  li.classList.add('icon-pdf');
+	  const li = document.createElement('li');
+	  li.classList.add('icon-pdf');
 
-  const link = document.createElement('a');
-  link.href = url;
-  link.target = '_blank';
-  link.textContent = linkText;
-  li.appendChild(link);
+	  const link = document.createElement('a');
+	  link.href = url;
+	  link.target = '_blank';
+	  link.textContent = linkText;
+	  li.appendChild(link);
 
-  // Trash icon for team page editors
-  if (data.auth?.isTeamPageEditor) {
-    const trash = document.createElement('span');
-    trash.className = 'trash-icon';
-    trash.style.cursor = 'pointer';
-    trash.style.marginLeft = '8px';
-    trash.innerHTML = '<i class="fa fa-trash" style="color: #df683a;" aria-hidden="true"></i>';
+	  // Trash icon for team page editors
+	  if (data.auth?.isTeamPageEditor) {
+	    const trash = document.createElement('span');
+	    trash.className = 'trash-icon';
+	    trash.style.cursor = 'pointer';
+	    trash.style.marginLeft = '8px';
+	    trash.innerHTML = '<i class="fa fa-trash" style="color: #df683a;" aria-hidden="true"></i>';
 
-    trash.addEventListener('click', async () => {
-      if (!confirm(`Delete "${linkText}" from the team data?`)) return;
+	    trash.addEventListener('click', async () => {
+	      if (!confirm(`Delete "${linkText}" from the team data?`)) return;
 
-      const teamParam = getNormalizedTeamParam();
-      try {
-        // DELETE row from SheetDB
-        const res = await fetch(
-      		`https://sheetdb.io/api/v1/ne0v0i21llmeh/Id/${encodeURIComponent(file.rowId)}` +
-				  `?sheet=TeamPageUpdateForm`,
-				  { method: 'DELETE' }
-				);
-        const dataRes = await res.json();
+	      const teamParam = getNormalizedTeamParam();
+	      try {
+	        // DELETE row from SheetDB
+	        const res = await fetch(
+	      		`https://sheetdb.io/api/v1/ne0v0i21llmeh/Id/${encodeURIComponent(file.rowId)}` +
+					  `?sheet=TeamPageUpdateForm`,
+					  { method: 'DELETE' }
+					);
+	        const dataRes = await res.json();
 
-        if (res.ok) {
-          console.log('Row deleted:', dataRes);
-          const cached = getCachedData(teamParam);
-          if (cached?.data?.opsPlanLink?.rowId === file.rowId) {
-            delete cached.data.opsPlanLink;
-            cacheData(teamParam, cached.data, cached.data.auth);
-          }
-          li.remove();
-        } else {
-          console.error('Failed to delete row:', dataRes);
-          alert('Failed to delete operations plan row. See console for details.');
-        }
-      } catch (err) {
-        console.error('Error deleting file row:', err);
-        alert('Error deleting operations plan row: ' + err.message);
-      }
-    });
+	        if (res.ok) {
+	          console.log('Row deleted:', dataRes);
+	          const cached = getCachedData(teamParam);
+	          if (cached?.data?.opsPlanLink?.rowId === file.rowId) {
+	            delete cached.data.opsPlanLink;
+	            cacheData(teamParam, cached.data, cached.data.auth);
+	          }
+	          li.remove();
+	        } else {
+	          console.error('Failed to delete row:', dataRes);
+	          alert('Failed to delete operations plan row. See console for details.');
+	        }
+	      } catch (err) {
+	        console.error('Error deleting file row:', err);
+	        alert('Error deleting operations plan row: ' + err.message);
+	      }
+	    });
 
-    li.appendChild(trash);
-  }
+	    li.appendChild(trash);
+	  }
 
-  ul.appendChild(li);
-  opsDiv.appendChild(ul);
-} else {
-  opsDiv.innerHTML = `<p>No operations plan found for ${team.teamName}.</p>`;
-}
+	  ul.appendChild(li);
+	  opsDiv.appendChild(ul);
+	} else {
+	  opsDiv.innerHTML = `<p>No operations plan found for ${team.teamName}.</p>`;
+	}
 
 
   groupDiv.innerHTML = team.groupEmail
