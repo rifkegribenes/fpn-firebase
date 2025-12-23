@@ -147,6 +147,9 @@ export async function renderTeamPage(data, user) {
         formattedDate = formatDate(file.meetingDate);
       }
 
+      console.log(file);
+      console.log(file.id);
+
       const linkText = `${team.teamName} minutes ${formattedDate}`;
       const url = `https://drive.google.com/file/d/${file.id}/view`;
       

@@ -19,12 +19,13 @@ import { getDriveFileId } from './helpers.js';
 
 
 export async function fetchTeamData(team) {
+  console.log(`FETCH TEAM DATA ************* 22: ${team}`);
 
   const teamObj = await globalLookup(team);
-  const announcements = await fetchAnnouncements(team);
-  const minutes = await fetchMinutes(team);
-  // const opsPlanLink = fetchOpsFile(team);
-  // const banner = fetchBanner(team);
+  const announcements = await fetchAnnouncements(teamObj.teamName);
+  const minutes = await fetchMinutes(teamObj.teamName);
+  // const opsPlanLink = fetchOpsFile(teamObj.teamName);
+  // const banner = fetchBanner(teamObj.teamName);
 
   return {
       success: true,
@@ -103,6 +104,7 @@ export async function fetchAnnouncements(team) {
 // }
 
 export async function fetchMinutes(team) {
+  console.log(`FETCH MINUTES ************* 106: ${team}`);
   const res = await fetch(
     `https://sheetdb.io/api/v1/ne0v0i21llmeh/search` +
     `?sheet=TeamPageUpdateForm` +
@@ -111,20 +113,43 @@ export async function fetchMinutes(team) {
 
   const rows = await res.json();
 
+  console.log('FETCH MINUTES ************* 115');
+
+  console.log(rows.map(r => ({
+    team: r['Your Team'],
+    update: r['What do you want to update?'],
+    file: r['Upload your meeting minutes here (.pdf, .docx or URL to Google Document)']
+  })));
+
   return rows
-    .filter(r =>
-      r['What do you want to update?']?.includes('minutes')
-    )
+    .filter(r => {
+      const updateType =
+        r['What do you want to update?']?.toLowerCase() || '';
+
+      const fileUrl =
+        r['Upload your meeting minutes here (.pdf, .docx or URL to Google Document)'] || '';
+
+      return (
+        updateType.includes('minutes') &&
+        fileUrl.trim().length > 0
+      );
+    })
     .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp))
     .slice(0, 10)
-    .map(r => ({
-      id: getDriveFileId(r['Upload your meeting minutes here (.pdf, .docx or URL to Google Document)']) || '',
-      timestamp: r.Timestamp,
-      meetingDate: r['Date of meeting'],
-      fileUrl: r['Upload your meeting minutes here (.pdf, .docx or URL to Google Document)'] || '',
-      rowId: r.rowId 
-    }));
+    .map(r => {
+      const fileUrl =
+        r['Upload your meeting minutes here (.pdf, .docx or URL to Google Document)'] || '';
+
+      return {
+        id: getDriveFileId(fileUrl) || '',
+        timestamp: r.Timestamp,
+        meetingDate: r['Date of meeting'],
+        fileUrl,
+        rowId: r.Id
+      };
+    });
 }
+
 
 
 // export function fetchOpsFile(team) {
