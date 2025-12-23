@@ -56,15 +56,23 @@ export async function renderTeamPage(data, user) {
 
   // --- Banner ---
   bannerDiv.innerHTML = '';
-  const bannerData = data?.teamData?.banner || data?.banner;
-  console.log('bannerDiv:', bannerDiv);
+  const bannerData = data?.teamData?.banner[0];
+  console.log(data);
+  console.log(data.teamData);
+  console.log(data.teamData.banner);
+  console.log(data.teamData.banner[0]);
+  console.log(data.teamData.banner[0].id);
+  console.log(`bannerData`);
+  console.log(bannerData);
 
-  if (bannerData && bannerData.fileUrl) {
+  if (bannerData && bannerData.publicUrl) {
+  	console.log(`bannerData MAIN.js 63 #########################`);
+  	console.log(bannerData);
     console.log('rendering banner');
     bannerSection.style.display = 'block';
     bannerDiv.innerHTML = `
       <div class="bannerImgCont">
-        <img class="bannerImg" src="${bannerData.fileUrl}" alt="${bannerData.altText}">
+        <img class="bannerImg" src="${bannerData.publicUrl}" alt="${bannerData.alt}">
       </div>
     `;
 
@@ -263,8 +271,6 @@ export async function renderTeamPage(data, user) {
 opsDiv.innerHTML = '';
 if (data?.teamData?.opsPlanFile && data?.teamData?.opsPlanFile[0]?.id) {
   const file = data.teamData?.opsPlanFile[0];
-  console.log(`opsPlanFile MAIN.js 266 #########################`);
-  console.log(file);
   const linkText = `${team.teamName} Operations Plan`;
   const url = `https://drive.google.com/file/d/${file.id}/view`;
 
@@ -750,7 +756,7 @@ function renderTeamLinks(links) {
  * Manually refresh data from backend.
  */
 async function refreshData() {
-  console.log('refreshData START ******************************');
+  // console.log('refreshData START ******************************');
   const refreshBtn = document.getElementById('refreshBtn');
   const team = getNormalizedTeamParam();
   if (!team) return;
@@ -775,13 +781,13 @@ async function refreshData() {
   console.log(`Cache cleared for team "${team}"`);
 
   try {
-    console.log('calling loadBackend ******************************');
+    // console.log('calling loadBackend ******************************');
     await loadBackend(team, getCurrentUser());
   } catch (err) {
     console.error('Error refreshing data:', err);
     alert('Error refreshing data: ' + err.message);
   } finally {
-    console.log('refreshData FINALLY ******************************');
+    // console.log('refreshData FINALLY ******************************');
     refreshBtn.disabled = false;
     refreshBtn.dataset.refreshing = 'false';
     // Restore original text after DOM updates by init()

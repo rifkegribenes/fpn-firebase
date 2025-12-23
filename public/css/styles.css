@@ -500,7 +500,7 @@ img.bannerImg {
   cursor: not-allowed;
 }
 
-#loginBtn {
+#loginBtn, #teamUpdateBtn {
   background-color: #df683a !important;
 }
 

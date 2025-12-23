@@ -25,7 +25,8 @@ export async function fetchTeamData(team) {
   const announcements = await fetchAnnouncements(teamObj.teamName);
   const minutes = await fetchMinutes(teamObj.teamName);
   const opsPlanFile = await fetchOpsFile(teamObj.teamName);
-  // const banner = await fetchBanner(teamObj.teamName);
+  const banner = await fetchBanner(teamObj.teamName);
+  console.log('banner', banner);
 
   return {
       success: true,
@@ -36,13 +37,7 @@ export async function fetchTeamData(team) {
       announcements,
       minutes,
       opsPlanFile,
-      // banner,
-      // auth: {
-      //   email: effectiveEmail,
-      //   isAdmin,
-      //   isTeamLead,
-      //   isTeamPageEditor
-      // }
+      banner
     };
 }
 
@@ -97,11 +92,40 @@ export async function fetchAnnouncements(team) {
     .slice(0, 3);
 }
 
-// export function fetchBanner(team) {
-//   return rows
-//     .filter(r => r['Your Team'] === teamName && r.BannerPublicURL)
-//     .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp))[0] || null;
-// }
+// code that copies banner file to github and writes public URL to sheet is in
+// FPN Automations AppsScript (Handlers.js)
+
+export async function fetchBanner(team) {
+
+  console.log(`fetchBanner ****************** 99`);
+
+  const res = await fetch(
+    `https://sheetdb.io/api/v1/ne0v0i21llmeh/search` +
+    `?sheet=TeamPageUpdateForm` +
+    `&Your%20Team=${encodeURIComponent(team)}`
+  );
+  const rows = await res.json();
+
+  return rows
+    .filter(r => !!r.BannerPublicURL)
+    .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp))
+    .slice(0, 1)
+    .map(r => {
+      const publicUrl =
+        r['BannerPublicURL'] || '';
+      const driveUrl = r['Upload banner photo here'] || '';
+      const id = getDriveFileId(driveUrl) || '';
+      console.log(`banner FILE ID: ${id}`);
+
+      return {
+        id,
+        timestamp: r.Timestamp,
+        publicUrl,
+        rowId: r.Id,
+        alt: r['Image alt text (brief image description for screen readers)']
+      };
+    });
+}
 
 export async function fetchMinutes(team) {
 
@@ -145,7 +169,7 @@ export async function fetchMinutes(team) {
 
 
 export async function fetchOpsFile(team) {
-  console.log(`fetchOpsFile ****************** 149`);
+  // console.log(`fetchOpsFile ****************** 149`);
 
   const res = await fetch(
     `https://sheetdb.io/api/v1/ne0v0i21llmeh/search` +
@@ -180,7 +204,7 @@ export async function fetchOpsFile(team) {
         const fileUrl =
           r[`Upload your team's operations plan here (.pdf, .docx or URL to Google Document)`] || '';
           const id = getDriveFileId(fileUrl) || '';
-          console.log(`opsPlan FILE ID: ${id}`);
+          // console.log(`opsPlan FILE ID: ${id}`);
 
         return {
           id,
