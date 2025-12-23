@@ -100,12 +100,22 @@ export function formatDate(dateInput) {
 
   let date;
 
+  // YYYY-MM-DD (ISO-like, no timezone)
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
     const [y, m, d] = dateInput.split('-').map(Number);
     date = new Date(y, m - 1, d);
+
+  // MM/DD/YYYY
+  } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateInput)) {
+    const [m, d, y] = dateInput.split('/').map(Number);
+    date = new Date(y, m - 1, d);
+
+  } else if (dateInput instanceof Date) {
+    date = dateInput;
+
   } else {
-    // Fallback: force local midnight
-    date = new Date(`${dateInput}T12:00:00`);
+    console.warn('Unrecognized date format:', dateInput);
+    return '';
   }
 
   return date.toLocaleDateString('en-US', {
@@ -114,6 +124,7 @@ export function formatDate(dateInput) {
     year: 'numeric'
   });
 }
+
 
 
 /**

@@ -24,6 +24,9 @@ export async function fetchTeamData(team) {
   const teamObj = await globalLookup(team);
   const announcements = await fetchAnnouncements(teamObj.teamName);
   const minutes = await fetchMinutes(teamObj.teamName);
+
+  console.log(`minutes: $$$$$$$$$$$$$$$$$$$$$$$$$$$`);
+  console.log(minutes);
   // const opsPlanLink = fetchOpsFile(teamObj.teamName);
   // const banner = fetchBanner(teamObj.teamName);
 
@@ -104,7 +107,7 @@ export async function fetchAnnouncements(team) {
 // }
 
 export async function fetchMinutes(team) {
-  console.log(`FETCH MINUTES ************* 106: ${team}`);
+
   const res = await fetch(
     `https://sheetdb.io/api/v1/ne0v0i21llmeh/search` +
     `?sheet=TeamPageUpdateForm` +
@@ -113,13 +116,11 @@ export async function fetchMinutes(team) {
 
   const rows = await res.json();
 
-  console.log('FETCH MINUTES ************* 115');
-
-  console.log(rows.map(r => ({
-    team: r['Your Team'],
-    update: r['What do you want to update?'],
-    file: r['Upload your meeting minutes here (.pdf, .docx or URL to Google Document)']
-  })));
+  // console.log(rows.map(r => ({
+  //   team: r['Your Team'],
+  //   update: r['What do you want to update?'],
+  //   file: r['Upload your meeting minutes here (.pdf, .docx or URL to Google Document)']
+  // })));
 
   return rows
     .filter(r => {

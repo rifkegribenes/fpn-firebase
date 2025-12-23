@@ -176,9 +176,12 @@ export async function renderTeamPage(data, user) {
           const teamParam = getNormalizedTeamParam();
           try {
             // DELETE row from SheetDB
-            const res = await fetch(`https://sheetdb.io/api/v1/ne0v0i21llmeh/rows/${file.rowId}`, {
-              method: 'DELETE',
-            });
+            const res = await fetch(
+          		`https://sheetdb.io/api/v1/ne0v0i21llmeh/Id/${encodeURIComponent(file.rowId)}` +
+						  `?sheet=TeamPageUpdateForm`,
+						  { method: 'DELETE' }
+						);
+
             const dataRes = await res.json();
 
             if (res.ok) {
@@ -341,6 +344,8 @@ export function updateAuthUI(user) {
     if (refreshBtn) refreshBtn.style.display = 'none';
     if (teamUpdateContainer) teamUpdateContainer.style.display = 'none';
     document.querySelectorAll('.announcement-admin').forEach(el => el.style.display = 'none');
+    // Remove minutes trash icons on logout
+		document.querySelectorAll('.trash-icon').forEach(el => el.remove());
 
     // Update cached auth state only (lastUserEmail), do NOT touch team data
     if (isLocalStorageAvailable()) {
