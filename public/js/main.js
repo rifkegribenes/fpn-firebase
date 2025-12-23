@@ -147,9 +147,6 @@ export async function renderTeamPage(data, user) {
         formattedDate = formatDate(file.meetingDate);
       }
 
-      console.log(file);
-      console.log(file.id);
-
       const linkText = `${team.teamName} minutes ${formattedDate}`;
       const url = `https://drive.google.com/file/d/${file.id}/view`;
       
@@ -262,27 +259,75 @@ export async function renderTeamPage(data, user) {
 
 
 
-  // Operations Plan
-  opsDiv.innerHTML = '';
-  if (data?.teamData?.opsPlanLink) {
-    const file = data.teamData?.opsPlanLink;
-    // console.log(`opsPlan`, file);
-    const createdDateStr = file.createdTime || null;
-    let formattedDate = 'Unknown date';
-    if (createdDateStr) {
-      const createdDate = new Date(createdDateStr);
-      formattedDate = formatDate(createdDate);
-    }
-    const linkText = `${team.teamName} Operations Plan`;
-    const url = `https://drive.google.com/file/d/${file.id}/view`;
-    // console.log(linkText, url);
-    opsDiv.innerHTML = `<ul class="icon-list"><li class="icon-pdf">
-      <a href="${url}" target="_blank">
-        ${linkText}
-      </a></li></ul>`;
-  } else {
-    opsDiv.innerHTML = `<p>No operations plan found for ${team.teamName}.</p>`;
+  // --- Operations Plan ---
+opsDiv.innerHTML = '';
+if (data?.teamData?.opsPlanFile && data?.teamData?.opsPlanFile[0]?.id) {
+  const file = data.teamData?.opsPlanFile[0];
+  console.log(`opsPlanFile MAIN.js 266 #########################`);
+  console.log(file);
+  const linkText = `${team.teamName} Operations Plan`;
+  const url = `https://drive.google.com/file/d/${file.id}/view`;
+
+  const ul = document.createElement('ul');
+  ul.classList.add('icon-list');
+
+  const li = document.createElement('li');
+  li.classList.add('icon-pdf');
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.target = '_blank';
+  link.textContent = linkText;
+  li.appendChild(link);
+
+  // Trash icon for team page editors
+  if (data.auth?.isTeamPageEditor) {
+    const trash = document.createElement('span');
+    trash.className = 'trash-icon';
+    trash.style.cursor = 'pointer';
+    trash.style.marginLeft = '8px';
+    trash.innerHTML = '<i class="fa fa-trash" style="color: #df683a;" aria-hidden="true"></i>';
+
+    trash.addEventListener('click', async () => {
+      if (!confirm(`Delete "${linkText}" from the team data?`)) return;
+
+      const teamParam = getNormalizedTeamParam();
+      try {
+        // DELETE row from SheetDB
+        const res = await fetch(
+      		`https://sheetdb.io/api/v1/ne0v0i21llmeh/Id/${encodeURIComponent(file.rowId)}` +
+				  `?sheet=TeamPageUpdateForm`,
+				  { method: 'DELETE' }
+				);
+        const dataRes = await res.json();
+
+        if (res.ok) {
+          console.log('Row deleted:', dataRes);
+          const cached = getCachedData(teamParam);
+          if (cached?.data?.opsPlanLink?.rowId === file.rowId) {
+            delete cached.data.opsPlanLink;
+            cacheData(teamParam, cached.data, cached.data.auth);
+          }
+          li.remove();
+        } else {
+          console.error('Failed to delete row:', dataRes);
+          alert('Failed to delete operations plan row. See console for details.');
+        }
+      } catch (err) {
+        console.error('Error deleting file row:', err);
+        alert('Error deleting operations plan row: ' + err.message);
+      }
+    });
+
+    li.appendChild(trash);
   }
+
+  ul.appendChild(li);
+  opsDiv.appendChild(ul);
+} else {
+  opsDiv.innerHTML = `<p>No operations plan found for ${team.teamName}.</p>`;
+}
+
 
   groupDiv.innerHTML = team.groupEmail
     ? `<ul class="icon-list"><li class="icon-group"><a href="https://groups.google.com/a/friendsofportlandnet.org/g/${team.shortName}" target="_blank">${team.teamName} Google Group</a></li></ul>`
@@ -560,44 +605,42 @@ export function renderAnnouncements({
     `;
 
     if (isEditor) {
-      const adminDiv = document.createElement('div');
-      adminDiv.className = 'announcement-admin links';
+		  const adminDiv = document.createElement('div');
+		  adminDiv.className = 'announcement-admin links';
 
-      // --- Edit ---
-      const editLink = document.createElement('a');
-      editLink.href = '#';
-      editLink.textContent = 'Edit';
-      editLink.className = 'edit-link';
+		  // --- Edit Icon ---
+		  const editLink = document.createElement('a');
+		  editLink.href = '#';
+		  editLink.className = 'edit-link';
+		  editLink.innerHTML = '<i class="fa fa-edit" style="color: #df683a;" aria-hidden="true"></i>';
+		  editLink.addEventListener('click', async (evt) => {
+		    evt.preventDefault();
+		    console.log('editLink click');
+		    await showUpdateForm(teamData, {
+		      id: a.id,
+		      updateType: 'announcement',
+		      title: a.title,
+		      body: a.body
+		    });
+		  });
 
-      editLink.addEventListener('click', async (evt) => {
-        evt.preventDefault();
-        console.log('editLink click');
-        await showUpdateForm(teamData, {
-          id: a.id,
-          updateType: 'announcement',
-          title: a.title,
-          body: a.body
-        });
-      });
+		  adminDiv.appendChild(editLink);
 
-      adminDiv.appendChild(editLink);
-      adminDiv.appendChild(document.createTextNode(' | '));
+		  // --- Delete Icon ---
+		  const deleteLink = document.createElement('a');
+		  deleteLink.href = '#';
+		  deleteLink.className = 'delete-link';
+		  deleteLink.innerHTML = '<i class="fa fa-trash" style="color: #df683a;" aria-hidden="true"></i>';
+		  deleteLink.addEventListener('click', (evt) => {
+		    evt.preventDefault();
+		    console.log('deleteLink click');
+		    handleDeleteAnnouncement(a, teamShortName);
+		  });
 
-      // --- Delete ---
-      const deleteLink = document.createElement('a');
-      deleteLink.href = '#';
-      deleteLink.textContent = 'Delete';
-      deleteLink.className = 'delete-link';
+		  adminDiv.appendChild(deleteLink);
+		  div.appendChild(adminDiv);
+		}
 
-      deleteLink.addEventListener('click', (evt) => {
-        console.log('deleteLink click');
-        evt.preventDefault();
-        handleDeleteAnnouncement(a, teamShortName);
-      });
-
-      adminDiv.appendChild(deleteLink);
-      div.appendChild(adminDiv);
-    }
 
     container.appendChild(div);
   });

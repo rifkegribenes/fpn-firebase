@@ -392,6 +392,8 @@ img.bannerImg {
 
 .announcement-item .links {
   margin-top: 4px;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .announcement-item .links a, #banner a {
@@ -399,6 +401,7 @@ img.bannerImg {
   font-weight: normal;
   color: rgba(7, 55, 99, 1);
   text-decoration: none;
+  margin-right: 10px;
 }
 
 .announcement-item .links a:hover {

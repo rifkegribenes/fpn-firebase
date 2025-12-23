@@ -24,11 +24,8 @@ export async function fetchTeamData(team) {
   const teamObj = await globalLookup(team);
   const announcements = await fetchAnnouncements(teamObj.teamName);
   const minutes = await fetchMinutes(teamObj.teamName);
-
-  console.log(`minutes: $$$$$$$$$$$$$$$$$$$$$$$$$$$`);
-  console.log(minutes);
-  // const opsPlanLink = fetchOpsFile(teamObj.teamName);
-  // const banner = fetchBanner(teamObj.teamName);
+  const opsPlanFile = await fetchOpsFile(teamObj.teamName);
+  // const banner = await fetchBanner(teamObj.teamName);
 
   return {
       success: true,
@@ -38,7 +35,7 @@ export async function fetchTeamData(team) {
       teamObj,
       announcements,
       minutes,
-      // opsPlanLink,
+      opsPlanFile,
       // banner,
       // auth: {
       //   email: effectiveEmail,
@@ -116,12 +113,6 @@ export async function fetchMinutes(team) {
 
   const rows = await res.json();
 
-  // console.log(rows.map(r => ({
-  //   team: r['Your Team'],
-  //   update: r['What do you want to update?'],
-  //   file: r['Upload your meeting minutes here (.pdf, .docx or URL to Google Document)']
-  // })));
-
   return rows
     .filter(r => {
       const updateType =
@@ -153,9 +144,52 @@ export async function fetchMinutes(team) {
 
 
 
-// export function fetchOpsFile(team) {
+export async function fetchOpsFile(team) {
+  console.log(`fetchOpsFile ****************** 149`);
 
-// }
+  const res = await fetch(
+    `https://sheetdb.io/api/v1/ne0v0i21llmeh/search` +
+    `?sheet=TeamPageUpdateForm` +
+    `&Your%20Team=${encodeURIComponent(team)}`
+  );
+
+  const rows = await res.json();
+
+  // console.log(rows.map(r => ({
+  //   team: r['Your Team'],
+  //   update: r['What do you want to update?'],
+  //   file: r['Upload your meeting minutes here (.pdf, .docx or URL to Google Document)']
+  // })));
+
+  return rows
+    .filter(r => {
+      const updateType =
+        r['What do you want to update?']?.toLowerCase() || '';
+
+      const fileUrl =
+        r[`Upload your team's operations plan here (.pdf, .docx or URL to Google Document)`] || '';
+
+      return (
+        updateType.includes('operations') &&
+        fileUrl.trim().length > 0
+        );
+      })
+      .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp))
+      .slice(0, 1)
+      .map(r => {
+        const fileUrl =
+          r[`Upload your team's operations plan here (.pdf, .docx or URL to Google Document)`] || '';
+          const id = getDriveFileId(fileUrl) || '';
+          console.log(`opsPlan FILE ID: ${id}`);
+
+        return {
+          id,
+          timestamp: r.Timestamp,
+          fileUrl,
+          rowId: r.Id
+        };
+      });
+}
 
 export async function fetchTeamLinks() {
   const res = await fetch(
