@@ -8,7 +8,8 @@ import { getNormalizedTeamParam,
 			cacheKeyFor, 
 			waitForElement,
 			normalizeAnnouncement,
-			formatDate } from './helpers.js';
+			formatDate,
+			getCalendarEditUrl } from './helpers.js';
 import { getAuth, onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 console.log(getCurrentUser());
@@ -68,11 +69,7 @@ export async function renderTeamPage(data, user) {
 
     // Add admin links after the image
     if (data.auth.isTeamPageEditor) {
-		  const bannerImg = bannerDiv.querySelector('img.bannerImg'); // query inside bannerDiv
-		  const currentFileUrl = bannerImg ? bannerImg.src : null;
-		  const currentUserEmail = data.auth.email || '';
 
-	  if (currentFileUrl) {
 	    const adminDiv = document.createElement('div');
 	    adminDiv.className = 'announcement-admin links';
 	    adminDiv.style.marginTop = '8px';
@@ -80,13 +77,17 @@ export async function renderTeamPage(data, user) {
 
 	    // --- Edit / New Image ---
 	    const editLink = document.createElement('a');
-	    editLink.href = `https://docs.google.com/forms/d/e/1FAIpQLSe9TU8URPswEVELyy9jOImY2_2vJ9OOE7O8L5JlNUuiJzPQYQ/viewform?usp=pp_url&entry.1458714000=${encodeURIComponent(teamName)}`;
-	    editLink.target = '_blank';
+	    editLink.href = "#";
 	    editLink.className = 'edit-link';
 	    editLink.innerHTML = '<i class="fa fa-edit" style="color: #df683a;" aria-hidden="true"></i>';
+	    editLink.addEventListener('click', async (evt) => {
+		    evt.preventDefault();
+		    console.log('editLink click');
+		    await showUpdateForm(data?.teamData, {
+		      updateType: 'banner'
+		    });
+		  });
 	    adminDiv.appendChild(editLink);
-
-	    adminDiv.appendChild(document.createTextNode(' | '));
 
 	    // --- Delete / Trash ---
 	    const trash = document.createElement('span');
@@ -122,7 +123,7 @@ export async function renderTeamPage(data, user) {
 
 	    adminDiv.appendChild(trash);
 	    bannerDiv.appendChild(adminDiv);
-		  }
+
 		}
 
   }
@@ -145,15 +146,6 @@ export async function renderTeamPage(data, user) {
     console.log(`no team lead assigned for ${data?.teamData?.teamObj?.teamName}`);
   }
 
-  const buildDeleteURL = (a, teamName, currentUserEmail) => {
-    const base = a.deleteURL;
-    const params = new URLSearchParams({
-      team: teamName,
-      email: currentUserEmail,
-    });
-    return `${base}&${params.toString()}`;
-  }
-
   // --- Announcements ---
   announcementsDiv.innerHTML = '';
   if (data?.teamData?.announcements?.length || data?.announcements?.length) {
@@ -167,7 +159,6 @@ export async function renderTeamPage(data, user) {
   } else {
     announcementsDiv.innerHTML = `<p>No announcements found for ${data.teamData.teamObj.shortName}.</p>`;
   }
-
 
 
   // --- Minutes ---
@@ -291,6 +282,33 @@ export async function renderTeamPage(data, user) {
         </iframe>
       </div>
     `;
+
+    // --- Admin edit icon ---
+	  if (data.auth?.isTeamPageEditor) {
+	    const editUrl = getCalendarEditUrl(baseUrl);
+
+	    if (editUrl) {
+	      const adminDiv = document.createElement('div');
+	      adminDiv.className = 'announcement-admin links';
+	      adminDiv.style.marginTop = '8px';
+	      adminDiv.style.fontSize = '0.9em';
+
+	      const adminNote = document.createElement('span');
+	      adminNote.className = 'adminNote';
+	      adminNote.innerText = `Opens calendar in a new tab. You must be logged in as ${data.auth.email} to edit. Once calendar opens, switch users by clicking avatar at top right.`
+
+	      const editIcon = document.createElement('a');
+	      editIcon.href = editUrl;
+	      editIcon.target = '_blank';
+	      editIcon.rel = 'noopener noreferrer';
+	      editIcon.innerHTML =
+	        '<i class="fa fa-edit" style="color: #df683a;" aria-hidden="true"></i>';
+
+	      adminDiv.appendChild(adminNote);  
+	      adminDiv.appendChild(editIcon);
+	      eventsDiv.appendChild(adminDiv);
+	    }
+	  }
   } else {
     eventsDiv.innerHTML = `<p>No calendar found for ${data.teamData?.teamObj?.teamName}.</p>`;
   }
@@ -777,7 +795,7 @@ function renderTeamLinks(links) {
     const a = document.createElement('a');
     a.href = `?team=${link.shortName}`;
     a.textContent = link.name;
-    a.className = 'teamLinkBtn';
+    a.className = link.active ? 'teamLinkBtn teamLinkActive' : 'teamLinkBtn';
     container.appendChild(a);
   });
 }

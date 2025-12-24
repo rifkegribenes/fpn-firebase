@@ -390,7 +390,7 @@ img.bannerImg {
   line-height: 1.4;
 }
 
-.announcement-item .links {
+.announcement-admin.links {
   margin-top: 4px;
   display: flex;
   justify-content: flex-end;
@@ -406,6 +406,13 @@ img.bannerImg {
 
 .announcement-item .links a:hover {
   text-decoration: underline;
+}
+
+.adminNote {
+  font-style: italic;
+  font-size: .9em;
+  margin-right: 10px;
+  color: #df683a;
 }
 
 /* ===== CALENDAR ===== */
@@ -604,6 +611,10 @@ img.bannerImg {
 
 .teamLinkBtn:hover {
   background-color: #eee;
+}
+
+.teamLinkActive {
+  background-color: rgba(223, 104, 58, .3);
 }
 
 /* PAGE UPDATE FORM */

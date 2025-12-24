@@ -124,16 +124,25 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
     evt.preventDefault();
 
     const query = getQueryParams();
-    const rowId = query.id || generateRowId(); 
-    const isUpdate = !!query.id; 
 
-    const selectedRadio = document.querySelector(
-      'input[name="entry.1192593661"]:checked'
-    );
-    if (!selectedRadio) {
+		const selectedRadio = document.querySelector(
+		  'input[name="entry.1192593661"]:checked'
+		);
+
+		if (!selectedRadio) {
       alert('Please select what to update');
       return;
     }
+
+		const updateType = normalizeUpdateType(selectedRadio?.value);
+
+		// Only announcements can be edited
+		const isAnnouncementEdit =
+		  updateType === 'announcement' && !!query.id;
+
+		const rowId = isAnnouncementEdit
+		  ? query.id
+		  : generateRowId();
 
     let minutesFileId = '';
     let minutesUrl = '';
@@ -255,18 +264,9 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
     try {
       setLoading(true, 'Submitting…');
 
-      const url = `https://sheetdb.io/api/v1/ne0v0i21llmeh?sheet=TeamPageUpdateForm`;
-      const method = isUpdate ? 'PUT' : 'POST';
-
-      const fetchOptions = {
-        method: isUpdate ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)  // now includes filter if updating
-      };
-
       let res;
 
-      if (isUpdate) {
+      if (isAnnouncementEdit) {
         const updateUrl = `https://sheetdb.io/api/v1/ne0v0i21llmeh/Id/${rowId}?sheet=TeamPageUpdateForm`;
 
         res = await fetch(updateUrl, {
@@ -311,7 +311,7 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
         throw new Error(JSON.stringify(json));
       }
 
-      alert(isUpdate ? 'Edit saved successfully! Click Refresh Data to see updates' : 'Update submitted successfully! Click Refresh Data to see updates');
+      alert(isAnnouncementEdit ? 'Edit saved successfully! Click Refresh Data to see updates' : 'Update submitted successfully! Click Refresh Data to see updates');
 
       // Hide form / restore page
       onComplete();
@@ -401,29 +401,33 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
 	    user
 	  );
 
-	  // --- PREFILL RADIO AND TEXT INPUTS AFTER LISTENERS ARE ATTACHED ---
-	  if (prefill?.id) {
-	    const ut = normalizeUpdateType(prefill.updateType);
+	  // --- PREFILL UPDATE TYPE RADIO (always allowed) ---
+		if (prefill?.updateType) {
+		  const ut = normalizeUpdateType(prefill.updateType);
 
-	    const updateTypeRadio = Array.from(
-	      formMount.querySelectorAll('input[name="entry.1192593661"]')
-	    ).find(input =>
-	      input.value.toLowerCase().includes(ut.toLowerCase())
-	    );
+		  const updateTypeRadio = Array.from(
+		    formMount.querySelectorAll('input[name="entry.1192593661"]')
+		  ).find(input =>
+		    input.value.toLowerCase().includes(ut)
+		  );
 
-	    const titleInput = formMount.querySelector('#entry_announcement_title');
-	    const bodyInput = formMount.querySelector('#entry_announcement_body');
+		  if (updateTypeRadio) {
+		    updateTypeRadio.checked = true;
+		    updateTypeRadio.dispatchEvent(
+		      new Event('change', { bubbles: true })
+		    );
+		  }
+		}
 
-	    if (updateTypeRadio) {
-	      updateTypeRadio.checked = true;
-	      updateTypeRadio.dispatchEvent(
-	        new Event('change', { bubbles: true })
-	      );
-	    }
+		// --- PREFILL ANNOUNCEMENT CONTENT (edit-only) ---
+		if (prefill?.id && normalizeUpdateType(prefill.updateType) === 'announcement') {
+		  const titleInput = formMount.querySelector('#entry_announcement_title');
+		  const bodyInput = formMount.querySelector('#entry_announcement_body');
 
-	    if (titleInput) titleInput.value = prefill.title || '';
-	    if (bodyInput) bodyInput.value = prefill.body || '';
-	  }
+		  if (titleInput) titleInput.value = prefill.title || '';
+		  if (bodyInput) bodyInput.value = prefill.body || '';
+		}
+
 
 
 	}
@@ -475,7 +479,7 @@ export async function handleDeleteAnnouncement(announcement, team) {
     );
     if (elem) elem.remove();
 
-    alert('Announcement deleted');
+    alert('Announcement deleted. Click Refresh Data to see updated content.');
 
   } catch (err) {
     console.error('Delete failed:', err);

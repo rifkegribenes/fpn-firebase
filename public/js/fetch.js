@@ -223,7 +223,8 @@ export async function fetchTeamLinks() {
 
   return rows.map(r => ({
     name: r.Team,
-    shortName: r['Short name']
+    shortName: r['Short name'],
+    active: !!r['Assigned to (name)']
   }));
 }
 

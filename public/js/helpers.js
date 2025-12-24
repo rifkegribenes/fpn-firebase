@@ -146,3 +146,16 @@ export function getDriveFileId(url) {
 
   return match ? match[1] : null;
 }
+
+export function getCalendarEditUrl(embedUrl) {
+  try {
+    const url = new URL(embedUrl);
+    const cid = url.searchParams.get('src');
+    if (!cid) return null;
+
+    return `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(cid)}`;
+  } catch {
+    return null;
+  }
+}
+
