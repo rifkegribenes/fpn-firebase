@@ -6,7 +6,7 @@ import {
 	cacheKeyFor,
 	normalizeAnnouncement } from './helpers.js';
 import { config } from './config.js';
-import { initGoogleDriveAuth, getTokenClient } from './auth.js';
+import { initGoogleDriveAuth, getTokenClient, getCurrentUser } from './auth.js';
 import { cacheData, getCachedData, renderAnnouncements, loadBackend } from './main.js';
 
 function generateRowId() {
@@ -20,6 +20,7 @@ function buildDriveFileName({
 	  fileType,   // 'minutes' | 'ops' | 'banner'
 	  meetingDate // string from input[type="date"] or null
 	}) {
+    console.log('buildDriveFileName');
 	  const mtgDate = meetingDate
 	    ? formatDateFileName(meetingDate)
 	    : null;
@@ -101,17 +102,18 @@ function initUpdateForm(onComplete, teamObj, user) {
         if (radio.value === key) {
           section.style.display = 'block';
           submitBtn.style.display = 'block';
-          // updateDiv.style.display = 'none'; <== this hides radio question
-          // Make visible section inputs required
           inputs.forEach(input => input.required = true);
         } else {
+          // Keep display: none but do NOT reset file inputs
           section.style.display = 'none';
-          // Remove required from hidden sections
-          inputs.forEach(input => input.required = false);
+          inputs.forEach(input => {
+            if (input.type !== 'file') input.required = false;
+          });
         }
       });
     });
   });
+
 
   // Form submit
   document.getElementById('updateFormForm').addEventListener('submit', (evt) => {
@@ -151,7 +153,7 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
     let bannerFileId = '';
     let bannerUrl = '';
 
-    if (selectedRadio.value === 'Upload meeting minutes') {
+    if (updateType === 'minutes') {
       const meetingDate =
         document.getElementById('entry_meeting_date')?.value;
 
@@ -178,7 +180,7 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
       console.log(`minutesUrl: ${minutesUrl}`);
     }
 
-    if (selectedRadio.value === 'Upload operations plan') {
+    if (updateType === 'ops') {
       const file =
         document.getElementById('entry_operations_plan')?.files[0];
 
@@ -201,28 +203,40 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
 
     }
 
-    if (selectedRadio.value === 'Upload banner photo here') {
+    if (updateType === 'banner') {
       const file =
         document.getElementById('entry_banner_upload')?.files[0];
+
+      console.log('banner file input', file);
+
+      if (!file) {
+        console.error('No banner file selected');
+        alert('Please select a banner file.');
+        return;
+      }
 
       const filename = buildDriveFileName({
         file,
         team: teamObj.shortName,
-        fileType: 'banner',
-        meetingDate: null
+        fileType: 'banner'
       });
+
+      console.log(`submit.js: 215: banner filename: ${filename}`);
 
       bannerFileId = await uploadFileToDrive(
         file,
         config.BANNER_FOLDER_ID,
         filename
       );
+
+      console.log(`submit.js: 223: bannerFileId: ${bannerFileId}`);
     }
 
     bannerUrl = bannerFileId
       ? `https://drive.google.com/open?id=${bannerFileId}`
       : '';
 
+    console.log(`submit.js: 230: bannerUrl: ${bannerUrl}`);
 
     const payload = {
       data: [
@@ -316,36 +330,40 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
       // Hide form / restore page
       onComplete();
 
-      const newRow = {
-        id: rowId,
-        'Announcement Title': payload.data[0]['Announcement Title'],
-        'Announcement Body': payload.data[0]['Announcement Body'],
-        'Edit URL': payload.data[0]['Edit URL'],
-        'Delete URL': '', // or build delete URL if available
-        Timestamp: new Date().toISOString()
-      };
+      if (updateType === 'announcement') {
 
-      console.log('newRow', newRow);
+        const newRow = {
+          id: rowId,
+          'Announcement Title': payload.data[0]['Announcement Title'],
+          'Announcement Body': payload.data[0]['Announcement Body'],
+          'Edit URL': payload.data[0]['Edit URL'],
+          'Delete URL': '', // or build delete URL if available
+          Timestamp: new Date().toISOString()
+        };
+
+        console.log('newRow', newRow);
 
 
-      // 1. Update cache & get the announcement object back
-      const announcement = upsertAnnouncementInCache(getNormalizedTeamParam(), newRow);
+        // 1. Update cache & get the announcement object back
+        const announcement = upsertAnnouncementInCache(getNormalizedTeamParam(), newRow);
 
-      // 2. Re-render all announcements via the central function
+        // 2. Re-render all announcements via the central function
 
-      const announcementsDiv = await waitForElement('#announcements');
-      if (announcement) {
-        const cachedData = getCachedData(getNormalizedTeamParam());
-        if (cachedData && cachedData.teamData) {
-          renderAnnouncements({
-            announcements: cachedData.teamData.announcements,
-            container: announcementsDiv,
-            isEditor: cachedData.auth.isTeamPageEditor,
-            teamShortName: cachedData.teamData.teamObj.shortName,
-            teamData: cachedData.teamData
-          });
+        const announcementsDiv = await waitForElement('#announcements');
+        if (announcement) {
+          const cachedData = getCachedData(getNormalizedTeamParam());
+          if (cachedData && cachedData.teamData) {
+            renderAnnouncements({
+              announcements: cachedData.teamData.announcements,
+              container: announcementsDiv,
+              isEditor: cachedData.auth.isTeamPageEditor,
+              teamShortName: cachedData.teamData.teamObj.shortName,
+              teamData: cachedData.teamData
+            });
+          }
         }
-      }
+    }
+
 
 
     } catch (err) {
@@ -392,7 +410,7 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
 	      const team = getNormalizedTeamParam();
 	      setLoading(true);
 	      try {
-	        await loadBackend(team, { email: teamData.auth?.email });
+	        await loadBackend(team, getCurrentUser());
 	      } finally {
 	        setLoading(false);
 	      }
@@ -616,7 +634,11 @@ async function ensureDriveAccessToken() {
 
 
 async function uploadFileToDrive(file, folderId) {
-  if (!file) return null;
+  console.log('uploadFileToDrive called');
+  if (!file) {
+    console.error('No file sent to uploadFileToDrive');
+    return;
+  }
 
   const accessToken = await ensureDriveAccessToken();
 
@@ -635,18 +657,23 @@ async function uploadFileToDrive(file, folderId) {
   let res;
 
   try {
-    res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink", {
-      method: "POST",
-      headers: {
-        "Authorization": "Bearer " + accessToken
-      },
-      body: form
-    });
+    res = await fetch(
+      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink&supportsAllDrives=true",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + accessToken
+        },
+        body: form
+      }
+    );
+
   } catch(err) {
     console.log(`uploadFileToDrive err: ${err}`)
   };
 
   const data = await res.json();
+  console.log('uploadFileToDrive', data);
   if (!res.ok) throw new Error(data.error?.message || 'File upload failed');
 
   return data.id;

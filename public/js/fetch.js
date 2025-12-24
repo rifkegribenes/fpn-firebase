@@ -237,28 +237,30 @@ const ADMIN_EMAILS = [
   "sarah1@friendsofportlandnet.org"
 ];
 
-const TEAM_LEAD_REGEX = /^tl\.[^@]+@friendsofportlandnet\.org$/i;
+const TEAM_LEAD_REGEX = /^tl\.([^@]+)@friendsofportlandnet\.org$/i;
 
 /**
- * Derive all auth flags from a single email
+ * Derive global auth facts from email ONLY
+ * (no page-specific logic here)
  */
 export function deriveAuthFromEmail(email = '') {
   const normalized = email.trim().toLowerCase();
 
   const isAdmin = ADMIN_EMAILS.includes(normalized);
 
-  const isTeamLead =
-    TEAM_LEAD_REGEX.test(normalized) || isAdmin;
-
-  // Option A: editors include TLs + admins
-  const isTeamPageEditor = isTeamLead || isAdmin;
+  let teamLeadSlug = null;
+  const match = normalized.match(TEAM_LEAD_REGEX);
+  if (match) {
+    teamLeadSlug = match[1]; // e.g. "woodstock"
+  }
 
   return {
     email: normalized,
     isAdmin,
-    isTeamLead,
-    isTeamPageEditor
+    isTeamLead: Boolean(teamLeadSlug),
+    teamLeadSlug // <-- critical: page comparison key
   };
 }
+
 
 

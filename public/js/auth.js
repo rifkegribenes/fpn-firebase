@@ -70,7 +70,7 @@ export function initGoogleDriveAuth() {
 
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: config.GOOGLE_OAUTH_CLIENT_ID,
-    scope: 'https://www.googleapis.com/auth/drive.file',
+    scope: 'https://www.googleapis.com/auth/drive',
     callback: () => {}
   });
 

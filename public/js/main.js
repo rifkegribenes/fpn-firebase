@@ -22,6 +22,33 @@ export async function renderTeamPage(data, user) {
   const updateContainer = document.getElementById('teamUpdateContainer');
   if (!updateContainer) console.warn('#teamUpdateContainer not found');
 
+  const auth = data.auth;
+  const teamObj = data?.teamData?.teamObj;
+
+  const pageTeamSlug =
+    teamObj?.shortName ||
+    getNormalizedTeamParam();
+
+  const normalizeSlug = s => (s || '').trim().toLowerCase();
+
+  const isTeamPageEditor =
+    auth?.isAdmin ||
+    (
+      auth?.isTeamLead &&
+      normalizeSlug(auth?.teamLeadSlug) === normalizeSlug(pageTeamSlug)
+    );
+
+  const refreshBtn = await waitForElement('#refreshBtn');
+
+  if (refreshBtn) {
+    if (isTeamPageEditor) {
+      refreshBtn.style.display = 'inline-block';
+      attachRefreshListener();
+    } else {
+      refreshBtn.style.display = 'none';
+    }
+  }
+
   const [
     title,
     announcementsDiv,
@@ -46,8 +73,6 @@ export async function renderTeamPage(data, user) {
     waitForElement('#teamLeadEmail')
   ]);
 
-  const refreshBtn = document.getElementById('refreshBtn');
-
   const team = data?.teamData?.teamObj || {};
   const teamName = data?.teamData?.teamObj?.teamName || getNormalizedTeamParam();
 
@@ -68,7 +93,7 @@ export async function renderTeamPage(data, user) {
     `;
 
     // Add admin links after the image
-    if (data.auth.isTeamPageEditor) {
+    if (isTeamPageEditor) {
 
 	    const adminDiv = document.createElement('div');
 	    adminDiv.className = 'announcement-admin links';
@@ -102,7 +127,7 @@ export async function renderTeamPage(data, user) {
 	      const teamParam = getNormalizedTeamParam();
 	      try {
 	        const res = await fetch(
-	          `https://sheetdb.io/api/v1/ne0v0i21llmeh/Id/${encodeURIComponent(file.rowId)}` +
+	          `https://sheetdb.io/api/v1/ne0v0i21llmeh/Id/${encodeURIComponent(bannerData.rowId)}` +
 	          `?sheet=TeamPageUpdateForm`,
 	          { method: 'DELETE' }
 	        );
@@ -152,7 +177,7 @@ export async function renderTeamPage(data, user) {
     renderAnnouncements({
       announcements: data.teamData.announcements,
       container: announcementsDiv,
-      isEditor: data.auth.isTeamPageEditor,
+      isEditor: isTeamPageEditor,
       teamShortName: data.teamData.teamObj.shortName,
       teamData: data.teamData
     });
@@ -186,7 +211,7 @@ export async function renderTeamPage(data, user) {
       li.appendChild(link);  
 
       // Trash icon for team page editors ---
-      if (data.auth?.isTeamPageEditor) {
+      if (isTeamPageEditor) {
         const trash = document.createElement('span');
         trash.className = 'trash-icon';
 			  trash.style.cursor = 'pointer';
@@ -284,7 +309,7 @@ export async function renderTeamPage(data, user) {
     `;
 
     // --- Admin edit icon ---
-	  if (data.auth?.isTeamPageEditor) {
+	  if (isTeamPageEditor) {
 	    const editUrl = getCalendarEditUrl(baseUrl);
 
 	    if (editUrl) {
@@ -335,7 +360,7 @@ export async function renderTeamPage(data, user) {
 	  li.appendChild(link);
 
 	  // Trash icon for team page editors
-	  if (data.auth?.isTeamPageEditor) {
+	  if (isTeamPageEditor) {
 	    const trash = document.createElement('span');
 	    trash.className = 'trash-icon';
 	    trash.style.cursor = 'pointer';
@@ -395,7 +420,7 @@ export async function renderTeamPage(data, user) {
   // --- Team Update Link (conditionally rendered) ---
   updateContainer.innerHTML = ''; // clear previous content
 
-  if (data?.auth?.isTeamPageEditor && data?.teamData?.teamObj?.teamName) {
+  if (isTeamPageEditor && data?.teamData?.teamObj?.teamName) {
     const updateBtn = document.createElement('button');
     updateBtn.id = 'teamUpdateBtn';
     updateBtn.type = 'button';
@@ -409,9 +434,6 @@ export async function renderTeamPage(data, user) {
 
 
   }
-
-  // Always attach refresh listener after rendering
-  attachRefreshListener();  
 
 }
 
@@ -427,11 +449,6 @@ export function updateAuthUI(user) {
     if (userInfo) userInfo.textContent = `Logged in as ${user?.email}`;
     if (loginBtn) loginBtn.hidden = true;
     if (logoutBtn) logoutBtn.hidden = false;
-    if (refreshBtn) {
-      refreshBtn.style.display = 'inline-block';
-      attachRefreshListener(); 
-    }
-    if (teamUpdateContainer) teamUpdateContainer.style.display = 'block';
     // Edit/delete links already handled in renderTeamPage
   } else {
     // Logged out
@@ -538,7 +555,7 @@ export async function loadBackend(team, user = null) {
 					  email: '',
 					  isAdmin: false,
 					  isTeamLead: false,
-					  isTeamPageEditor: false
+					  teamLeadSlug: null
 					}
 				};
 
@@ -573,14 +590,15 @@ export async function loadBackend(team, user = null) {
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     console.log('Using cached team page data:', cached.data);
 
+    const authRes = deriveAuthFromEmail(user?.email || '');
+
     const safeData = {
       teamData: cached.data.teamData,
-      auth: cached.data.auth || { email: '', isAdmin: false, isTeamLead: false, isTeamPageEditor: false }
+      auth: authRes
     };
 
     renderTeamPage(safeData, user);
     setLoading(false);
-    attachRefreshListener();
     return; // skip backend entirely
 }
 
@@ -602,7 +620,7 @@ export async function loadBackend(team, user = null) {
 	    email: '',
 	    isAdmin: false,
 	    isTeamLead: false,
-	    isTeamPageEditor: false
+	    teamLeadSlug: null
 	  }
 	};
 
@@ -613,7 +631,6 @@ export async function loadBackend(team, user = null) {
     console.error('Error fetching team page:', err);
   } finally {
     setLoading(false);
-    attachRefreshListener();
   }
 }
 
@@ -706,7 +723,7 @@ const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
  * Caches team data along with optional auth info.
  * @param {string} team - team key
  * @param {object} data - backend response for the team
- * @param {object} [auth] - optional auth info { email, isAdmin, isTeamLead, isTeamPageEditor }
+ * @param {object} [auth] - optional auth info { email, isAdmin, isTeamLead, teamLeadSlug }
  */
 export function cacheData(team, data, auth) {
   if (!isLocalStorageAvailable()) return; // skip caching if localStorage not available
