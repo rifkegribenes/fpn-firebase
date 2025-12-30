@@ -1,0 +1,3 @@
+name = "sheet-proxy"
+main = "workers/sheet-proxy.js"
+compatibility_date = "2025-12-30"

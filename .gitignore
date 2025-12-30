@@ -72,3 +72,6 @@ node_modules/
 
 # Local Netlify folder
 .netlify
+
+# Service Account .json key
+.sa-key.json
