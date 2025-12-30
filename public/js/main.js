@@ -1,15 +1,19 @@
 import { setupAuthUI, getCurrentUser, setCurrentUser } from './auth.js';
-import { fetchTeamLinks, fetchTeamData, deriveAuthFromEmail } from './fetch.js';
+import { fetchTeamLinks, 
+  fetchTeamData, 
+  deriveAuthFromEmail, 
+  clearTeamPageCache,
+  clearTeamLookupCache } from './fetch.js';
 import { config } from './config.js';
 import { showUpdateForm, handleDeleteAnnouncement } from './submit.js';
 import { getNormalizedTeamParam, 
-			setLoading, 
-			isLocalStorageAvailable, 
-			cacheKeyFor, 
-			waitForElement,
-			normalizeAnnouncement,
-			formatDate,
-			getCalendarEditUrl } from './helpers.js';
+	setLoading, 
+	isLocalStorageAvailable, 
+	cacheKeyFor, 
+	waitForElement,
+	normalizeAnnouncement,
+	formatDate,
+	getCalendarEditUrl } from './helpers.js';
 import { getAuth, onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 console.log(getCurrentUser());
@@ -656,13 +660,24 @@ export function renderAnnouncements({
 }) {
   container.innerHTML = '';
 
+  // Deduplicate announcements by id (last write wins)
+  if (Array.isArray(announcements)) {
+    const map = new Map();
+    announcements.forEach(item => {
+      const a = normalizeAnnouncement(item);
+      if (a?.id) map.set(a.id, a);
+    });
+    announcements = Array.from(map.values()).sort(
+      (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+    );
+  }
+
   if (!Array.isArray(announcements) || !announcements.length) {
     container.innerHTML = `<p>No announcements found for ${teamShortName}.</p>`;
     return;
   }
 
-  announcements.forEach(raw => {
-    const a = normalizeAnnouncement(raw);
+  announcements.forEach(a => {
     if (!a) return;
 
     const div = document.createElement('div');
@@ -841,7 +856,8 @@ async function refreshData() {
   // Show loading text + spinner
   refreshBtn.innerHTML = `Refreshing... `;
 
-  // Clear cached team data
+  // CLEAR ALL CACHES
+  clearTeamPageCache(team); 
   localStorage.removeItem(cacheKeyFor(team));
   console.log(`Cache cleared for team "${team}"`);
 

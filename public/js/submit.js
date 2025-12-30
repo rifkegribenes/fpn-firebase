@@ -139,12 +139,16 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
 		const updateType = normalizeUpdateType(selectedRadio?.value);
 
 		// Only announcements can be edited
-		const isAnnouncementEdit =
-		  updateType === 'announcement' && !!query.id;
+		const idInput = document.getElementById('entry_announcement_id');
+    const existingId = idInput?.value || null;
 
-		const rowId = isAnnouncementEdit
-		  ? query.id
-		  : generateRowId();
+    const isAnnouncementEdit =
+      updateType === 'announcement' && !!existingId;
+
+    const rowId = isAnnouncementEdit
+      ? existingId
+      : generateRowId();
+
 
     let minutesFileId = '';
     let minutesUrl = '';
@@ -330,40 +334,9 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
       // Hide form / restore page
       onComplete();
 
-      if (updateType === 'announcement') {
-
-        const newRow = {
-          id: rowId,
-          'Announcement Title': payload.data[0]['Announcement Title'],
-          'Announcement Body': payload.data[0]['Announcement Body'],
-          'Edit URL': payload.data[0]['Edit URL'],
-          'Delete URL': '', // or build delete URL if available
-          Timestamp: new Date().toISOString()
-        };
-
-        console.log('newRow', newRow);
-
-
-        // 1. Update cache & get the announcement object back
-        const announcement = upsertAnnouncementInCache(getNormalizedTeamParam(), newRow);
-
-        // 2. Re-render all announcements via the central function
-
-        const announcementsDiv = await waitForElement('#announcements');
-        if (announcement) {
-          const cachedData = getCachedData(getNormalizedTeamParam());
-          if (cachedData && cachedData.teamData) {
-            renderAnnouncements({
-              announcements: cachedData.teamData.announcements,
-              container: announcementsDiv,
-              isEditor: cachedData.auth.isTeamPageEditor,
-              teamShortName: cachedData.teamData.teamObj.shortName,
-              teamData: cachedData.teamData
-            });
-          }
-        }
-    }
-
+      // Always reload from backend (source of truth)
+      const team = getNormalizedTeamParam();
+      await loadBackend(team, getCurrentUser());
 
 
     } catch (err) {
@@ -439,12 +412,15 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
 
 		// --- PREFILL ANNOUNCEMENT CONTENT (edit-only) ---
 		if (prefill?.id && normalizeUpdateType(prefill.updateType) === 'announcement') {
-		  const titleInput = formMount.querySelector('#entry_announcement_title');
-		  const bodyInput = formMount.querySelector('#entry_announcement_body');
+      const titleInput = formMount.querySelector('#entry_announcement_title');
+      const bodyInput = formMount.querySelector('#entry_announcement_body');
+      const idInput = formMount.querySelector('#entry_announcement_id');
 
-		  if (titleInput) titleInput.value = prefill.title || '';
-		  if (bodyInput) bodyInput.value = prefill.body || '';
-		}
+      if (titleInput) titleInput.value = prefill.title || '';
+      if (bodyInput) bodyInput.value = prefill.body || '';
+      if (idInput) idInput.value = prefill.id;
+    }
+
 
 
 
@@ -517,6 +493,9 @@ function renderUpdateFormHTML() {
 
   <!-- Email -->
   <input type="hidden" name="entry.123456789" id="entry.123456789">
+
+  <!-- Announcement ID (for updates) -->
+  <input type="hidden" id="entry_announcement_id">  
 
   <!-- What do you want to update? -->
   <div id="update_question">
