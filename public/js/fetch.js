@@ -1,22 +1,6 @@
 import { callBackend } from './api.js';
 import { getDriveFileId } from './helpers.js';
 
-// export async function fetchAuth(user) {
-//   const email = user?.email || '';
-
-//   const data = await callBackend({
-//     action: 'auth',
-//     email
-//   });
-
-//   return {
-//     email,
-//     isAdmin: !!data?.isAdmin,
-//     isTeamLead: !!data?.isTeamLead,
-//     isTeamPageEditor: !!data?.isTeamPageEditor
-//   };
-// }
-
 
 export async function fetchTeamData(team) {
   console.log(`FETCH TEAM DATA ************* 22: ${team}`);
