@@ -9,6 +9,9 @@ import { config } from './config.js';
 import { initGoogleDriveAuth, getTokenClient, getCurrentUser } from './auth.js';
 import { cacheData, getCachedData, renderAnnouncements, loadBackend } from './main.js';
 
+const WORKER_URL = 'https://sheet-proxy.rifkegribenes.workers.dev';
+
+
 function generateRowId() {
   return 'row_' + ([1e7]+-1e3+-4e3+-8e3+-1e11)
     .replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
@@ -285,7 +288,7 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
       let res;
 
       if (isAnnouncementEdit) {
-        const updateUrl = `https://sheetdb.io/api/v1/ne0v0i21llmeh/Id/${rowId}?sheet=TeamPageUpdateForm`;
+        const updateUrl = `${WORKER_URL}?sheet=TeamPageUpdateForm&Id=${encodeURIComponent(rowId)}`;
 
         res = await fetch(updateUrl, {
           method: 'PATCH', 
@@ -301,15 +304,14 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
           })
         });
 
+
       } else {
-        res = await fetch(
-          'https://sheetdb.io/api/v1/ne0v0i21llmeh?sheet=TeamPageUpdateForm',
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          }
-        );
+        res = await fetch(`${WORKER_URL}?sheet=TeamPageUpdateForm`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
       }
 
 
@@ -437,9 +439,7 @@ export async function handleDeleteAnnouncement(announcement, team) {
     return;
   }
 
-  const url =
-    `https://sheetdb.io/api/v1/ne0v0i21llmeh/Id/${encodeURIComponent(rowId)}` +
-    `?sheet=TeamPageUpdateForm`;
+  const url = `${WORKER_URL}?sheet=TeamPageUpdateForm&Id=${encodeURIComponent(rowId)}`;
 
   try {
     const res = await fetch(url, { method: 'DELETE' });

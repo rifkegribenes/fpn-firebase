@@ -2,7 +2,7 @@ const SHEET_ID = '1A5wqQoAZhgk6QLFB4_8stVZUMP7iHdTrQikEa4ur4go';
 const SHEET_NAME = 'TeamPageUpdateForm';
 const CACHE_TTL = 60; // seconds
 
-const COLUMN_ORDER = [
+const TEAM_PAGE_COLUMN_ORDER = [
   'Timestamp',
   'Email Address',
   'Your Team',
@@ -20,6 +20,21 @@ const COLUMN_ORDER = [
   'Delete URL'
 ];
 
+const TEAM_LOOKUP_COLUMN_ORDER = [
+  'Team',
+  'Short name',
+  'Team Group Email',
+  'Team page',
+  'District',
+  'Team Lead email',
+  'Assigned to (name)',
+  'Alt email',
+  'Team calendar link',
+  'Team drive link'
+  // intentionally omitting "Password (original)"
+];
+
+
 
 export default {
   async fetch(request, env, ctx) {
@@ -29,7 +44,29 @@ export default {
 
 async function handleRequest(request, env, ctx) {
   const cache = caches.default;
-  const cacheKey = new Request(request.url, request);
+
+  // Parse sheet name from query parameter (fallback to default)
+  const urlObj = new URL(request.url);
+  const sheetName = urlObj.searchParams.get('sheet') || SHEET_NAME;
+
+  let columnOrder;
+
+  switch (sheetName) {
+    case 'TeamLookup':
+      columnOrder = TEAM_LOOKUP_COLUMN_ORDER;
+      break;
+
+    case 'TeamPageUpdateForm':
+    default:
+      columnOrder = TEAM_PAGE_COLUMN_ORDER;
+  }
+
+
+  // Use sheetName in the cacheKey to avoid collisions between sheets
+  const cacheKey = new Request(
+    `${urlObj.origin}${urlObj.pathname}?sheet=${sheetName}`,
+    request
+  );
 
   // Preflight CORS request
   if (request.method === 'OPTIONS') {
@@ -47,10 +84,10 @@ async function handleRequest(request, env, ctx) {
       const body = await request.json();
 
     // Map JSON to sheet columns
-    const rowValues = COLUMN_ORDER.map(key => body[key] || '');
+    const rowValues = columnOrder.map(key => body[key] || '');
 
     const appendRes = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheetName}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
       {
         method: 'POST',
         headers: {
@@ -76,11 +113,13 @@ async function handleRequest(request, env, ctx) {
       });
     } else {
       // GET request
-      const cached = await cache.match(cacheKey);
-      if (cached) return cached;
+      // const cached = await cache.match(cacheKey);
+      // if (cached) return cached;
+
+      console.log('Fetching sheet:', sheetName);
 
       const res = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheetName}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -98,8 +137,8 @@ async function handleRequest(request, env, ctx) {
       const json = rows.map(row => {
         const obj = {};
 
-        // Map each column in COLUMN_ORDER to the corresponding value in the row
-        COLUMN_ORDER.forEach((col, i) => {
+        // Map each column in columnOrder to the corresponding value in the row
+        columnOrder.forEach((col, i) => {
           const colIndex = headerRow.indexOf(col); // find actual index in sheet
           obj[col] = colIndex !== -1 ? row[colIndex] || '' : ''; // fill with '' if missing
         });
@@ -112,7 +151,7 @@ async function handleRequest(request, env, ctx) {
         headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
       });
 
-      ctx.waitUntil(cache.put(cacheKey, response.clone()));
+      // ctx.waitUntil(cache.put(cacheKey, response.clone()));
       return response;
     }
   } catch (err) {

@@ -8,6 +8,7 @@ export const config = {
   OPS_FOLDER_ID: '1G3y3ClhqKS7mN2FrJ5z-7LwSgJRI4vp2BF07TJ33xemrc-sCLCDLd4pxPM4Hj-oUL4biQVFX',
   BANNER_FOLDER_ID: '1MJnrpD2RV4ETcXdZaXHRZtUnuAWTRkEKKloAhmQMPI5o5uP4npqtPlu7PCsq3yafy3CvWzOa',
   GOOGLE_OAUTH_CLIENT_ID: '566556793461-i5fc3tpi87n220quut776aas2upcco3v.apps.googleusercontent.com',
+  CLOUDFLARE_WORKER_ENDPOINT: 'https://sheet-proxy.rifkegribenes.workers.dev',
 
 
   firebase: {

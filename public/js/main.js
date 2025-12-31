@@ -16,6 +16,8 @@ import { getNormalizedTeamParam,
 	getCalendarEditUrl } from './helpers.js';
 import { getAuth, onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
+const WORKER_URL = 'https://sheet-proxy.rifkegribenes.workers.dev';
+
 console.log(getCurrentUser());
 
 /**
@@ -23,6 +25,10 @@ console.log(getCurrentUser());
  */
 export async function renderTeamPage(data, user) {
   console.log('renderTeamPage() data:', data);
+  if (!data.teamData.success) {
+    console.log('failed to load team data');
+    return;
+  }
   const updateContainer = document.getElementById('teamUpdateContainer');
   if (!updateContainer) console.warn('#teamUpdateContainer not found');
 
@@ -124,17 +130,16 @@ export async function renderTeamPage(data, user) {
 	    trash.style.cursor = 'pointer';
 	    trash.innerHTML = '<i class="fa fa-trash" style="color: #df683a;" aria-hidden="true"></i>';
 
-	    // Click handler to delete banner row from SheetDB (or backend)
+	    // Click handler to delete banner row from back end
 	    trash.addEventListener('click', async () => {
 	      if (!confirm(`Delete banner for "${teamName}"?`)) return;
 
 	      const teamParam = getNormalizedTeamParam();
 	      try {
-	        const res = await fetch(
-	          `https://sheetdb.io/api/v1/ne0v0i21llmeh/Id/${encodeURIComponent(bannerData.rowId)}` +
-	          `?sheet=TeamPageUpdateForm`,
-	          { method: 'DELETE' }
-	        );
+          const res = await fetch(
+            `${WORKER_URL}?sheet=TeamPageUpdateForm&Id=${encodeURIComponent(bannerData.rowId)}`,
+            { method: 'DELETE' }
+          );
 	        const dataRes = await res.json();
 
 	        if (res.ok) {
@@ -230,12 +235,11 @@ export async function renderTeamPage(data, user) {
 
           const teamParam = getNormalizedTeamParam();
           try {
-            // DELETE row from SheetDB
+            // DELETE row from back end
             const res = await fetch(
-          		`https://sheetdb.io/api/v1/ne0v0i21llmeh/Id/${encodeURIComponent(file.rowId)}` +
-						  `?sheet=TeamPageUpdateForm`,
-						  { method: 'DELETE' }
-						);
+              `${WORKER_URL}?sheet=TeamPageUpdateForm&Id=${encodeURIComponent(file.rowId)}`,
+              { method: 'DELETE' }
+            );
 
             const dataRes = await res.json();
 
@@ -376,12 +380,11 @@ export async function renderTeamPage(data, user) {
 
 	      const teamParam = getNormalizedTeamParam();
 	      try {
-	        // DELETE row from SheetDB
+	        // DELETE row from back end
 	        const res = await fetch(
-	      		`https://sheetdb.io/api/v1/ne0v0i21llmeh/Id/${encodeURIComponent(file.rowId)}` +
-					  `?sheet=TeamPageUpdateForm`,
-					  { method: 'DELETE' }
-					);
+              `${WORKER_URL}?sheet=TeamPageUpdateForm&Id=${encodeURIComponent(file.rowId)}`,
+              { method: 'DELETE' }
+            );
 	        const dataRes = await res.json();
 
 	        if (res.ok) {

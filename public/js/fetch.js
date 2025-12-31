@@ -1,8 +1,9 @@
-import { callBackend } from './api.js';
 import { getDriveFileId } from './helpers.js';
 
-const TEAM_PAGE_SHEET =
-  'https://sheetdb.io/api/v1/ne0v0i21llmeh/search?sheet=TeamPageUpdateForm';
+const WORKER_URL = 'https://sheet-proxy.rifkegribenes.workers.dev';
+
+const TEAM_PAGE_SHEET = `${WORKER_URL}?sheet=TeamPageUpdateForm`;
+const TEAM_LOOKUP_URL = `${WORKER_URL}?sheet=TeamLookup`;
 
 const teamPageCache = new Map();
 
@@ -15,8 +16,8 @@ async function fetchTeamPageRows(teamName) {
 
   console.log(
     teamPageCache.size
-      ? 'Using in-memory SheetDB cache'
-      : 'Fetching fresh rows from SheetDB'
+      ? 'Using in-memory cloudflare cache'
+      : 'Fetching fresh rows from cloudflare'
   );
 
   if (teamPageCache.has(key)) {
@@ -24,25 +25,24 @@ async function fetchTeamPageRows(teamName) {
   }
 
   const res = await fetch(
-    `${TEAM_PAGE_SHEET}&Your%20Team=${encodeURIComponent(teamName)}`
+    `${WORKER_URL}?sheet=TeamPageUpdateForm&Your%20Team=${encodeURIComponent(teamName)}`
   );
+
 
   const rows = await res.json();
   teamPageCache.set(key, rows);
   return rows;
 }
 
-
-const TEAM_LOOKUP_URL =
-  'https://sheetdb.io/api/v1/ne0v0i21llmeh?sheet=TeamLookup';
-
 let teamLookupCache = null;
 
 async function fetchTeamLookupRows() {
   if (teamLookupCache) return teamLookupCache;
 
-  const res = await fetch(TEAM_LOOKUP_URL);
+  const res = await fetch(`${WORKER_URL}?sheet=TeamLookup`);
+
   teamLookupCache = await res.json();
+  console.log('sample row from teamLookupCache', teamLookupCache[0]);
   return teamLookupCache;
 }
 
@@ -168,9 +168,11 @@ export async function fetchTeamData(team) {
 }
 
 export async function globalLookup(team) {
+  console.log(`globalLookup: ${team}`);
   if (!team) return null;
 
   const rows = await fetchTeamLookupRows();
+  console.log('fetchTeamLookupRows:', rows);
 
   const normalized = team.trim().toLowerCase();
 
@@ -179,9 +181,11 @@ export async function globalLookup(team) {
     String(r['Short name'] || '').toLowerCase() === normalized
   );
 
+  console.log('teamRow', teamRow);
+
   if (!teamRow) return null;
 
-  return {
+  const teamObj = {
     shortName: teamRow['Short name'],
     teamName: teamRow.Team,
     groupEmail: teamRow['Team Group Email'],
@@ -193,6 +197,10 @@ export async function globalLookup(team) {
     teamCal: teamRow['Team calendar link'],
     teamDrive: teamRow['Team drive link']
   };
+
+  console.log('teamObj', teamObj);
+
+  return teamObj;
 }
 
 
@@ -230,14 +238,14 @@ export function deriveAuthFromEmail(email = '') {
   let teamLeadSlug = null;
   const match = normalized.match(TEAM_LEAD_REGEX);
   if (match) {
-    teamLeadSlug = match[1]; // e.g. "woodstock"
+    teamLeadSlug = match[1]; 
   }
 
   return {
     email: normalized,
     isAdmin,
     isTeamLead: Boolean(teamLeadSlug),
-    teamLeadSlug // <-- critical: page comparison key
+    teamLeadSlug 
   };
 }
 
