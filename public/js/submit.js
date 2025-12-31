@@ -54,9 +54,7 @@ function formatDateFileName(dateInput) {
 
 function normalizeUpdateType(value) {
   console.log('normalizeUpdateType');
-  console.log(value);
   const lower = (value || '').toLowerCase();
-  console.log(lower);
   if (lower.includes('announcement')) return 'announcement';
   if (lower.includes('minutes')) return 'minutes';
   if (lower.includes('operations')) return 'ops';
@@ -151,6 +149,9 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
     const rowId = isAnnouncementEdit
       ? existingId
       : generateRowId();
+
+    console.log(`isAnnouncementEdit: ${isAnnouncementEdit}`);
+    console.log(`rowId: ${rowId}`);
 
 
     let minutesFileId = '';
@@ -288,19 +289,20 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
       let res;
 
       if (isAnnouncementEdit) {
+        console.log('Submitting edit payload', rowId);
+
         const updateUrl = `${WORKER_URL}?sheet=TeamPageUpdateForm&Id=${encodeURIComponent(rowId)}`;
 
         res = await fetch(updateUrl, {
-          method: 'PATCH', 
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            data: [
-              {
-                "Announcement Title": document.getElementById('entry_announcement_title')?.value || "",
-                "Announcement Body": document.getElementById('entry_announcement_body')?.value || "",
-                "Delete URL": ""
-              }
-            ]
+            data: [{
+              "Announcement Title":
+                document.getElementById('entry_announcement_title')?.value || "",
+              "Announcement Body":
+                document.getElementById('entry_announcement_body')?.value || ""
+            }]
           })
         });
 
@@ -338,7 +340,9 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
 
       // Always reload from backend (source of truth)
       const team = getNormalizedTeamParam();
-      await loadBackend(team, getCurrentUser());
+      localStorage.removeItem(cacheKeyFor(team));
+      console.log('Cache cleared after submit for team:', team);
+      await loadBackend(team, getCurrentUser(), { force: true });
 
 
     } catch (err) {
@@ -371,10 +375,10 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
 	  const currentUserEmail = teamData.auth?.email || '';
 		if (emailInput) emailInput.value = currentUserEmail;
 
-		const user = {
-		  email: teamData.auth?.email || '',
-		  isTeamPageEditor: teamData.auth?.isTeamPageEditor || false
-		};
+		const user = getCurrentUser();
+
+    console.log(user);
+    console.log(user.email);
 
 	  // --- INITIALIZE FORM LOGIC (radios & sections) ---
 	  initUpdateForm(

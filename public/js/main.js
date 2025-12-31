@@ -18,7 +18,7 @@ import { getAuth, onAuthStateChanged, signInWithPopup, signOut, GoogleAuthProvid
 
 const WORKER_URL = 'https://sheet-proxy.rifkegribenes.workers.dev';
 
-console.log(getCurrentUser());
+console.log('currentUser:', getCurrentUser());
 
 /**
  * Render the team page after data is ready.
@@ -98,7 +98,9 @@ export async function renderTeamPage(data, user) {
     bannerSection.style.display = 'block';
     bannerDiv.innerHTML = `
       <div class="bannerImgCont">
-        <img class="bannerImg" src="${bannerData.publicUrl}" alt="${bannerData.alt}">
+        <img class="bannerImg"
+           src="${bannerData.publicUrl}${bannerData.publicUrl.includes('?') ? '&' : '?'}v=${bannerData.rowId || Date.now()}"
+           alt="${bannerData.alt}">
       </div>
     `;
 
@@ -177,7 +179,7 @@ export async function renderTeamPage(data, user) {
         <li class="icon-envelope"><a href="mailto:${data?.teamData?.teamObj?.tlEmail}">${data?.teamData?.teamObj?.tlEmail.toLowerCase()}</a></li>
       </ul>`
   } else {
-    console.log(`no team lead assigned for ${data?.teamData?.teamObj?.teamName}`);
+    // console.log(`no team lead assigned for ${data?.teamData?.teamObj?.teamName}`);
   }
 
   // --- Announcements ---
@@ -214,7 +216,8 @@ export async function renderTeamPage(data, user) {
       if (file.meetingDate) {
         formattedDate = formatDate(file.meetingDate);
       }
-
+      
+      // const linkText = `${file.fileName}`;
       const linkText = `${team.teamName} minutes ${formattedDate}`;
       const url = `https://drive.google.com/file/d/${file.id}/view`;
       
@@ -355,8 +358,9 @@ export async function renderTeamPage(data, user) {
 
   // --- Operations Plan ---
 	opsDiv.innerHTML = '';
-	if (data?.teamData?.opsPlanFile && data?.teamData?.opsPlanFile[0]?.id) {
-	  const file = data.teamData?.opsPlanFile[0];
+  const file = data?.teamData?.opsPlanFile?.[0];
+
+  if (file?.id && file?.rowId) {
 	  const linkText = `${team.teamName} Operations Plan`;
 	  const url = `https://drive.google.com/file/d/${file.id}/view`;
 
@@ -381,6 +385,11 @@ export async function renderTeamPage(data, user) {
 	    trash.innerHTML = '<i class="fa fa-trash" style="color: #df683a;" aria-hidden="true"></i>';
 
 	    trash.addEventListener('click', async () => {
+        if (!file.rowId) {
+          alert('This file no longer exists.');
+          li.remove();
+          return;
+        }
 	      if (!confirm(`Delete "${linkText}" from the team data?`)) return;
 
 	      const teamParam = getNormalizedTeamParam();
@@ -395,10 +404,10 @@ export async function renderTeamPage(data, user) {
 	        if (res.ok) {
 	          console.log('Row deleted:', dataRes);
 	          const cached = getCachedData(teamParam);
-	          if (cached?.data?.opsPlanLink?.rowId === file.rowId) {
-	            delete cached.data.opsPlanLink;
-	            cacheData(teamParam, cached.data, cached.data.auth);
-	          }
+	          if (cached?.data?.teamData?.opsPlanFile?.[0]?.rowId === file.rowId) {
+              cached.data.teamData.opsPlanFile = [];
+              cacheData(teamParam, cached.data, cached.data.auth);
+            }
 	          li.remove();
 	        } else {
 	          console.error('Failed to delete row:', dataRes);
@@ -441,7 +450,7 @@ export async function renderTeamPage(data, user) {
     updateContainer.appendChild(updateBtn);
 
     updateBtn.addEventListener('click', async () => {
-      await showUpdateForm(data.teamData); // <-- pass teamData here
+      await showUpdateForm(data.teamData); 
     });
 
 
@@ -526,9 +535,9 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 // --- Immediately fetch backend for anonymous user ---
-export async function loadBackend(team, user = null) {
+export async function loadBackend(team, user = null, { force = false } = {}) {
   const email = user?.email || '';
-  console.log('loadBackend');
+  // console.log('loadBackend');
   setLoading(true); // always show spinner initially
 
   // --- TEAM LINKS PAGE (no ?team param) ---
@@ -598,7 +607,7 @@ export async function loadBackend(team, user = null) {
   teamContent.style.display = 'block';
 
   // Check cache
-  const cached = getCachedData(team || 'teamlinks');
+  const cached = !force && getCachedData(team || 'teamlinks');
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     console.log('Using cached team page data:', cached.data);
 
@@ -655,7 +664,7 @@ function attachRefreshListener() {
   if (!refreshBtn.dataset.listenerAttached) {
     refreshBtn.addEventListener('click', refreshData);
     refreshBtn.dataset.listenerAttached = 'true';
-    console.log('Refresh button listener attached.');
+    // console.log('Refresh button listener attached.');
   }
 }
 
@@ -765,7 +774,7 @@ export function cacheData(team, data, auth) {
     }
   };
 
-  console.log(`cacheData(): writing to ${key} —`, payload);
+  // console.log(`cacheData(): writing to ${key} —`, payload);
 
   try {
     localStorage.setItem(key, JSON.stringify(payload));
@@ -784,8 +793,8 @@ export function getCachedData(team) {
   }
 
   const key = cacheKeyFor(team);
-  console.log('getCachedData(): checking key', key);
-  console.log('Available localStorage keys:', Object.keys(localStorage));
+  // console.log('getCachedData(): checking key', key);
+  // console.log('Available localStorage keys:', Object.keys(localStorage));
   const raw = localStorage.getItem(key);
   if (!raw) {
     console.log(`getCachedData(): no localStorage entry found for "${key}"`);
@@ -810,12 +819,12 @@ export function getCachedData(team) {
     // Expiry check
     const age = Date.now() - timestamp;
     if (age > CACHE_TTL) {
-      console.log(`getCachedData(): cache expired (${Math.round(age / 1000)}s old) for "${key}"`);
+      // console.log(`getCachedData(): cache expired (${Math.round(age / 1000)}s old) for "${key}"`);
       localStorage.removeItem(key);
       return null;
     }
 
-    console.log(`getCachedData(): cache hit for "${key}" (${Math.round(age / 1000)}s old)`);
+    // console.log(`getCachedData(): cache hit for "${key}" (${Math.round(age / 1000)}s old)`);
     return parsed;
 
   } catch (e) {
@@ -867,11 +876,11 @@ async function refreshData() {
   // CLEAR ALL CACHES
   clearTeamPageCache(team); 
   localStorage.removeItem(cacheKeyFor(team));
-  console.log(`Cache cleared for team "${team}"`);
+  // console.log(`Cache cleared for team "${team}"`);
 
   try {
     // console.log('calling loadBackend ******************************');
-    await loadBackend(team, getCurrentUser());
+    await loadBackend(team, getCurrentUser(), { force: true });
   } catch (err) {
     console.error('Error refreshing data:', err);
     alert('Error refreshing data: ' + err.message);

@@ -42,7 +42,7 @@ async function fetchTeamLookupRows() {
   const res = await fetch(`${WORKER_URL}?sheet=TeamLookup`);
 
   teamLookupCache = await res.json();
-  console.log('sample row from teamLookupCache', teamLookupCache[0]);
+  // console.log('sample row from teamLookupCache', teamLookupCache[0]);
   return teamLookupCache;
 }
 
@@ -61,18 +61,33 @@ export function clearTeamLookupCache() {
   console.log('Cleared teamLookupCache');
 }
 
-function deriveAnnouncements(rows) {
+function deriveAnnouncements(rows, teamName) {
+  const normalizedTeam = teamName?.trim().toLowerCase();
+
   return rows
-    .filter(r =>
-      r['What do you want to update?']?.includes('announcement')
-    )
+    .filter(r => {
+      const rowTeam = String(r['Your Team'] || '').trim().toLowerCase();
+      const updateType = r['What do you want to update?']?.toLowerCase() || '';
+      if (!r.Id) return false;
+      if (rowTeam !== normalizedTeam) return false;
+      if (!updateType.includes('announcement')) return false;
+      return true;
+    })
     .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp))
     .slice(0, 3);
 }
 
-function deriveBanner(rows) {
+function deriveBanner(rows, teamName) {
+  const normalizedTeam = teamName?.trim().toLowerCase();
+
   return rows
-    .filter(r => !!r.BannerPublicURL)
+    .filter(r => {
+      const rowTeam = String(r['Your Team'] || '').trim().toLowerCase();
+      if (!r.BannerPublicURL) return false;
+      if (!r.Id) return false;
+      if (rowTeam !== normalizedTeam) return false;
+      return true;
+    })
     .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp))
     .slice(0, 1)
     .map(r => {
@@ -88,7 +103,9 @@ function deriveBanner(rows) {
     });
 }
 
-function deriveMinutes(rows) {
+function deriveMinutes(rows, teamName) {
+  const normalizedTeam = teamName.trim().toLowerCase();
+
   return rows
     .filter(r => {
       const updateType =
@@ -97,49 +114,70 @@ function deriveMinutes(rows) {
       const fileUrl =
         r['Upload your meeting minutes here (.pdf, .docx or URL to Google Document)'] || '';
 
-      return updateType.includes('minutes') && fileUrl.trim();
+      const rowTeam =
+        String(r['Your Team'] || '').trim().toLowerCase();
+
+      if (!r.Id) return false;                      // orphan row
+      if (rowTeam !== normalizedTeam) return false; // wrong team
+      if (!updateType.includes('minutes')) return false;
+      if (!fileUrl.trim()) return false;
+
+      const driveId = getDriveFileId(fileUrl);
+      if (!driveId) return false;
+
+      return true;
     })
     .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp))
     .slice(0, 10)
-    .map(r => {
-      const fileUrl =
-        r['Upload your meeting minutes here (.pdf, .docx or URL to Google Document)'] || '';
-
-      return {
-        id: getDriveFileId(fileUrl) || '',
-        timestamp: r.Timestamp,
-        meetingDate: r['Date of meeting'],
-        fileUrl,
-        rowId: r.Id
-      };
-    });
+    .map(r => ({
+      id: getDriveFileId(
+        r['Upload your meeting minutes here (.pdf, .docx or URL to Google Document)']
+      ),
+      timestamp: r.Timestamp,
+      meetingDate: r['Date of meeting'],
+      fileUrl:
+        r['Upload your meeting minutes here (.pdf, .docx or URL to Google Document)'],
+      rowId: r.Id,
+      fileName: `${r['Your Team']} minutes ${r['Date of meeting']}`
+    }));
 }
 
-function deriveOpsPlan(rows) {
+
+function deriveOpsPlan(rows, teamName) {
+  const normalizedTeam = teamName?.trim().toLowerCase();
+
   return rows
     .filter(r => {
-      const updateType =
-        r['What do you want to update?']?.toLowerCase() || '';
-
+      const rowTeam = String(r['Your Team'] || '').trim().toLowerCase();
+      const updateType = r['What do you want to update?']?.toLowerCase() || '';
       const fileUrl =
         r[`Upload your team's operations plan here (.pdf, .docx or URL to Google Document)`] || '';
 
-      return updateType.includes('operations') && fileUrl.trim();
+      if (!r.Id) return false;
+      if (rowTeam !== normalizedTeam) return false;
+      if (!fileUrl.trim()) return false;
+      if (!updateType.includes('operations')) return false;
+
+      const driveId = getDriveFileId(fileUrl);
+      if (!driveId) return false;
+
+      return true;
     })
     .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp))
     .slice(0, 1)
     .map(r => {
       const fileUrl =
-        r[`Upload your team's operations plan here (.pdf, .docx or URL to Google Document)`] || '';
+        r[`Upload your team's operations plan here (.pdf, .docx or URL to Google Document)`];
 
       return {
-        id: getDriveFileId(fileUrl) || '',
+        id: getDriveFileId(fileUrl),
         timestamp: r.Timestamp,
         fileUrl,
         rowId: r.Id
       };
     });
 }
+
 
 export async function fetchTeamData(team) {
   console.log(`FETCH TEAM DATA ************* ${team}`);
@@ -151,8 +189,8 @@ export async function fetchTeamData(team) {
 
   const rows = await fetchTeamPageRows(teamObj.teamName);
   const announcements = deriveAnnouncements(rows);
-  console.log('fetchTeamData announcements');
-  console.log(announcements);
+  // console.log('fetchTeamData announcements');
+  // console.log(announcements);
 
   return {
     success: true,
@@ -160,10 +198,10 @@ export async function fetchTeamData(team) {
     page: 'team',
     team,
     teamObj,
-    announcements: deriveAnnouncements(rows),
-    minutes: deriveMinutes(rows),
-    opsPlanFile: deriveOpsPlan(rows),
-    banner: deriveBanner(rows)
+    announcements: deriveAnnouncements(rows, teamObj.teamName),
+    minutes: deriveMinutes(rows, teamObj.teamName),
+    opsPlanFile: deriveOpsPlan(rows, teamObj.teamName),
+    banner: deriveBanner(rows, teamObj.teamName)
   };
 }
 
@@ -172,7 +210,7 @@ export async function globalLookup(team) {
   if (!team) return null;
 
   const rows = await fetchTeamLookupRows();
-  console.log('fetchTeamLookupRows:', rows);
+  // console.log('fetchTeamLookupRows:', rows);
 
   const normalized = team.trim().toLowerCase();
 
@@ -181,7 +219,7 @@ export async function globalLookup(team) {
     String(r['Short name'] || '').toLowerCase() === normalized
   );
 
-  console.log('teamRow', teamRow);
+  // console.log('teamRow', teamRow);
 
   if (!teamRow) return null;
 
@@ -198,7 +236,7 @@ export async function globalLookup(team) {
     teamDrive: teamRow['Team drive link']
   };
 
-  console.log('teamObj', teamObj);
+  // console.log('teamObj', teamObj);
 
   return teamObj;
 }

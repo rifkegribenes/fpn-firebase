@@ -48,11 +48,16 @@ export default {
 };
 
 async function handleRequest(request, env, ctx) {
+  console.log('REQUEST', {
+    method: request.method,
+    url: request.url
+  });
   const cache = caches.default;
 
   // Parse sheet name from query parameter (fallback to default)
   const urlObj = new URL(request.url);
   const sheetName = urlObj.searchParams.get('sheet') || SHEET_NAME;
+  console.log('Using sheet:', sheetName);
 
   const sheetId = SHEET_ID_MAP[sheetName];
 
@@ -97,20 +102,27 @@ async function handleRequest(request, env, ctx) {
     if (request.method === 'POST') {
       const body = await request.json();
 
-    // Map JSON to sheet columns
-    const rowValues = columnOrder.map(key => body[key] || '');
+      console.log('POST body', JSON.stringify(body, null, 2));
 
-    const appendRes = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheetName}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ values: [rowValues] }),
-      }
-    );
+      console.log('columnOrder', columnOrder);
+
+      // Map JSON to sheet columns
+      const row = body?.data?.[0] || {};
+      const rowValues = columnOrder.map(key => row[key] || '');
+
+      console.log('rowValues', rowValues);
+
+      const appendRes = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheetName}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ values: [rowValues] }),
+        }
+      );
 
 
       if (!appendRes.ok) {
@@ -123,8 +135,128 @@ async function handleRequest(request, env, ctx) {
 
       return new Response(JSON.stringify({ success: true }), {
         status: 200,
-        headers: corsHeaders(),
+        headers: {
+          ...corsHeaders(),
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
       });
+    } else if (request.method === 'PATCH') {
+      const urlObj = new URL(request.url);
+      const rowId = urlObj.searchParams.get('Id');
+
+      if (!rowId) {
+        return new Response(
+          JSON.stringify({ error: 'Missing Id parameter' }),
+          { status: 400, headers: corsHeaders() }
+        );
+      }
+
+      const body = await request.json();
+      const updates = body?.data?.[0] || {};
+
+      // 1) Fetch the sheet
+      const res = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheetName}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const data = await res.json();
+      const [headerRow, ...rows] = data.values || [];
+
+      const idColIndex = headerRow.indexOf('Id');
+      if (idColIndex === -1) {
+        return new Response(
+          JSON.stringify({ error: 'Id column not found' }),
+          { status: 500, headers: corsHeaders() }
+        );
+      }
+
+      const rowIndex = rows.findIndex(r => r[idColIndex] === rowId);
+      if (rowIndex === -1) {
+        return new Response(
+          JSON.stringify({ error: 'Row not found' }),
+          { status: 404, headers: corsHeaders() }
+        );
+      }
+
+      // Sheets API is 1-based and includes header
+      const sheetRowNumber = rowIndex + 2;
+
+      // 2) Build update requests (only provided fields)
+      const requests = [];
+
+      for (const [key, value] of Object.entries(updates)) {
+        if (!columnOrder.includes(key)) continue;
+        if (key === 'Id') continue; // never overwrite Id
+
+        const colIndex = headerRow.indexOf(key);
+        if (colIndex === -1) continue;
+
+        requests.push({
+          updateCells: {
+            range: {
+              sheetId,
+              startRowIndex: sheetRowNumber - 1,
+              endRowIndex: sheetRowNumber,
+              startColumnIndex: colIndex,
+              endColumnIndex: colIndex + 1,
+            },
+            rows: [
+              {
+                values: [
+                  {
+                    userEnteredValue: { stringValue: String(value) },
+                  },
+                ],
+              },
+            ],
+            fields: 'userEnteredValue',
+          },
+        });
+      }
+
+      if (!requests.length) {
+        return new Response(
+          JSON.stringify({ error: 'No valid fields to update' }),
+          { status: 400, headers: corsHeaders() }
+        );
+      }
+
+      // 3) Execute batchUpdate
+      const updateRes = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}:batchUpdate`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ requests }),
+        }
+      );
+
+      if (!updateRes.ok) {
+        const text = await updateRes.text();
+        return new Response(
+          JSON.stringify({ error: text }),
+          { status: 500, headers: corsHeaders() }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, updatedRowId: rowId }),
+        {
+          headers: {
+            ...corsHeaders(),
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          },
+        }
+      );
+
     } else if (request.method === 'DELETE') {
       const urlObj = new URL(request.url);
       const rowId = urlObj.searchParams.get('Id');
@@ -200,7 +332,13 @@ async function handleRequest(request, env, ctx) {
 
       return new Response(
         JSON.stringify({ success: true, deletedRowId: rowId }),
-        { headers: corsHeaders() }
+        { headers: {
+            ...corsHeaders(),
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          } 
+        }
       );
     } else {
       // GET request
@@ -218,7 +356,13 @@ async function handleRequest(request, env, ctx) {
         const text = await res.text();
         return new Response('Failed to fetch sheet: ' + text, {
           status: 500,
-          headers: corsHeaders(),
+          headers: {
+            ...corsHeaders(),
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          },
         });
       }
 
@@ -239,7 +383,13 @@ async function handleRequest(request, env, ctx) {
 
 
       const response = new Response(JSON.stringify(json), {
-        headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
+        headers: { 
+          ...corsHeaders(), 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
       });
 
       // ctx.waitUntil(cache.put(cacheKey, response.clone()));
@@ -248,7 +398,12 @@ async function handleRequest(request, env, ctx) {
   } catch (err) {
     return new Response('Error: ' + err.message, {
       status: 500,
-      headers: corsHeaders(),
+      headers: {
+        ...corsHeaders(),
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
     });
   }
 }
@@ -259,7 +414,7 @@ async function handleRequest(request, env, ctx) {
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*', // or your front-end domain
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, PATCH, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
 }

@@ -7,7 +7,7 @@ export function getNormalizedTeamParam() {
 }
 
 export function cacheKeyFor(team) {
-  console.log('cacheKeyFor called with:', team);
+  // console.log('cacheKeyFor called with:', team);
   return `teamData_${team.toLowerCase()}`;
 }
 

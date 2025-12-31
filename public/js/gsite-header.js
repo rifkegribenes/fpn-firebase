@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const body = document.body;
 
   const isMobile = () => window.matchMedia('(max-width: 767px)').matches;
-  console.log(`isMobile: ${isMobile()}`);
+  // console.log(`isMobile: ${isMobile()}`);
 
   // Ensure menu has a predictable initial inline state
   if (mobileNav) {
