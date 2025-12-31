@@ -200,7 +200,12 @@ export async function renderTeamPage(data, user) {
   if (data?.teamData?.minutes?.length) {
     const ul = document.createElement('ul');
     ul.classList.add('icon-list');
-    data?.teamData?.minutes.forEach(file => {
+    data?.teamData?.minutes.sort((a, b) => {
+      const aDate = new Date(a.meetingDate || a.timestamp || 0);
+      const bDate = new Date(b.meetingDate || b.timestamp || 0);
+      return bDate - aDate; // newest first
+    })
+    .forEach(file => {
       const li = document.createElement('li');
       li.classList.add('icon-pdf')
       const createdDateStr = file.createdTime || null;

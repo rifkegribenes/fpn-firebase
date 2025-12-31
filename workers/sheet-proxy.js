@@ -34,6 +34,11 @@ const TEAM_LOOKUP_COLUMN_ORDER = [
   // intentionally omitting "Password (original)"
 ];
 
+const SHEET_ID_MAP = {
+  TeamPageUpdateForm: 677519141,
+  TeamLookup: 1322285583,
+};
+
 
 
 export default {
@@ -48,6 +53,15 @@ async function handleRequest(request, env, ctx) {
   // Parse sheet name from query parameter (fallback to default)
   const urlObj = new URL(request.url);
   const sheetName = urlObj.searchParams.get('sheet') || SHEET_NAME;
+
+  const sheetId = SHEET_ID_MAP[sheetName];
+
+  if (!sheetId) {
+    return new Response(
+      JSON.stringify({ error: `Unknown sheet: ${sheetName}` }),
+      { status: 400, headers: corsHeaders() }
+    );
+  }
 
   let columnOrder;
 
@@ -111,6 +125,83 @@ async function handleRequest(request, env, ctx) {
         status: 200,
         headers: corsHeaders(),
       });
+    } else if (request.method === 'DELETE') {
+      const urlObj = new URL(request.url);
+      const rowId = urlObj.searchParams.get('Id');
+
+      if (!rowId) {
+        return new Response(
+          JSON.stringify({ error: 'Missing Id parameter' }),
+          { status: 400, headers: corsHeaders() }
+        );
+      }
+
+      // 1) Fetch the sheet
+      const res = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheetName}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const data = await res.json();
+      const [headerRow, ...rows] = data.values || [];
+
+      const idColIndex = headerRow.indexOf('Id');
+      if (idColIndex === -1) {
+        return new Response(
+          JSON.stringify({ error: 'Id column not found' }),
+          { status: 500, headers: corsHeaders() }
+        );
+      }
+
+      const rowIndex = rows.findIndex(r => r[idColIndex] === rowId);
+      if (rowIndex === -1) {
+        return new Response(
+          JSON.stringify({ error: 'Row not found' }),
+          { status: 404, headers: corsHeaders() }
+        );
+      }
+
+      // Sheets API uses 0-based indexes INCLUDING header
+      const sheetRowNumber = rowIndex + 2;
+
+      // 2) Delete the row
+      const deleteRes = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}:batchUpdate`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            requests: [
+              {
+                deleteDimension: {
+                  range: {
+                    sheetId,
+                    dimension: 'ROWS',
+                    startIndex: sheetRowNumber - 1,
+                    endIndex: sheetRowNumber,
+                  },
+                },
+              },
+            ],
+          }),
+        }
+      );
+
+      if (!deleteRes.ok) {
+        const text = await deleteRes.text();
+        return new Response(
+          JSON.stringify({ error: text }),
+          { status: 500, headers: corsHeaders() }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, deletedRowId: rowId }),
+        { headers: corsHeaders() }
+      );
     } else {
       // GET request
       // const cached = await cache.match(cacheKey);
@@ -168,7 +259,7 @@ async function handleRequest(request, env, ctx) {
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*', // or your front-end domain
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
 }
