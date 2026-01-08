@@ -41,6 +41,16 @@ export async function renderTeamPage(data, user) {
 
   const normalizeSlug = s => (s || '').trim().toLowerCase();
 
+  console.log('EDITOR CHECK', {
+    email: auth?.email,
+    isAdmin: auth?.isAdmin,
+    isTeamLead: auth?.isTeamLead,
+    teamLeadSlug: auth?.teamLeadSlug,
+    pageTeamSlug,
+    normalizedMatch:
+      normalizeSlug(auth?.teamLeadSlug) === normalizeSlug(pageTeamSlug)
+  });
+
   const isTeamPageEditor =
     auth?.isAdmin ||
     (
@@ -442,6 +452,7 @@ export async function renderTeamPage(data, user) {
   updateContainer.innerHTML = ''; // clear previous content
 
   if (isTeamPageEditor && data?.teamData?.teamObj?.teamName) {
+    updateContainer.style.display = '';
     const updateBtn = document.createElement('button');
     updateBtn.id = 'teamUpdateBtn';
     updateBtn.type = 'button';
@@ -470,6 +481,7 @@ export function updateAuthUI(user) {
     if (userInfo) userInfo.textContent = `Logged in as ${user?.email}`;
     if (loginBtn) loginBtn.hidden = true;
     if (logoutBtn) logoutBtn.hidden = false;
+    if (teamUpdateContainer) teamUpdateContainer.style.display = '';
     // Edit/delete links already handled in renderTeamPage
   } else {
     // Logged out
