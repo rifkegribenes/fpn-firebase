@@ -175,6 +175,8 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
         meetingDate
       });
 
+      console.log('config.MINUTES_FOLDER_ID', config.MINUTES_FOLDER_ID);
+
       minutesFileId = await uploadFileToDrive(
         file,
         config.MINUTES_FOLDER_ID,
