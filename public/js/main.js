@@ -1,9 +1,9 @@
 import { setupAuthUI, getCurrentUser, setCurrentUser } from './auth.js';
-import { fetchTeamLinks, 
-  fetchTeamData, 
-  deriveAuthFromEmail, 
-  clearTeamPageCache,
-  clearTeamLookupCache } from './fetch.js';
+import {
+  fetchTeamLinks,
+  fetchTeamData,
+  deriveAuthFromEmail
+} from './fetch.js';
 import { config } from './config.js';
 import { showUpdateForm, handleDeleteAnnouncement } from './submit.js';
 import { getNormalizedTeamParam, 
@@ -153,14 +153,15 @@ export async function renderTeamPage(data, user) {
 	        const dataRes = await res.json();
 
 	        if (res.ok) {
-	          console.log('Banner row deleted:', dataRes);
-	          bannerDiv.innerHTML = ''; // Remove banner and admin UI
-	        } else {
-	          console.error('Failed to delete banner row:', dataRes);
-	          alert('Failed to delete banner. See console for details.');
-	        }
+            alert('Banner deleted.');
+            location.reload();
+          } else {
+            console.error('Failed to delete banner:', dataRes);
+            alert('Failed to delete banner. See console for details.');
+          }
+
 	      } catch (err) {
-	        console.error('Error deleting banner row:', err);
+	        console.error('Error deleting banner:', err);
 	        alert('Error deleting banner: ' + err.message);
 	      }
 	    });
@@ -260,17 +261,16 @@ export async function renderTeamPage(data, user) {
             const dataRes = await res.json();
 
             if (res.ok) {
-              console.log('Row deleted:', dataRes);
-
-              // Remove from DOM
-              li.remove();
+              alert('Minutes deleted.');
+              location.reload();
             } else {
-              console.error('Failed to delete row:', dataRes);
-              alert('Failed to delete file row. See console for details.');
+              console.error('Failed to delete minutes row:', dataRes);
+              alert('Failed to delete minutes. See console for details.');
             }
+
           } catch (err) {
-            console.error('Error deleting file row:', err);
-            alert('Error deleting file row: ' + err.message);
+            console.error('Error deleting minutes row:', err);
+            alert('Error deleting minutes: ' + err.message);
           }
         });
 
@@ -403,12 +403,13 @@ export async function renderTeamPage(data, user) {
 	        const dataRes = await res.json();
 
 	        if (res.ok) {
-	          console.log('Row deleted:', dataRes);
-	          li.remove();
-	        } else {
-	          console.error('Failed to delete row:', dataRes);
-	          alert('Failed to delete operations plan row. See console for details.');
-	        }
+            alert('Operations plan deleted.');
+            location.reload();
+          } else {
+            console.error('Failed to delete operations plan row:', dataRes);
+            alert('Failed to delete operations plan. See console for details.');
+          }
+
 	      } catch (err) {
 	        console.error('Error deleting file row:', err);
 	        alert('Error deleting operations plan row: ' + err.message);

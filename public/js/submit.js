@@ -1,13 +1,11 @@
-import { 
-	getNormalizedTeamParam, 
-	waitForElement, 
-	getQueryParams,
-	setLoading,
-	cacheKeyFor,
-	normalizeAnnouncement } from './helpers.js';
-import { config } from './config.js';
-import { initGoogleDriveAuth, getTokenClient, getCurrentUser } from './auth.js';
-import { cacheData, getCachedData, renderAnnouncements, loadBackend } from './main.js';
+import {
+  getNormalizedTeamParam,
+  waitForElement,
+  getQueryParams,
+  setLoading
+} from './helpers.js';
+
+import { loadBackend } from './main.js';
 
 const WORKER_URL = 'https://sheet-proxy.rifkegribenes.workers.dev';
 
@@ -334,7 +332,7 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
       if (!res.ok) {
         throw new Error(JSON.stringify(json));
       }
-      
+
       alert(
         isAnnouncementEdit
           ? 'Edit saved successfully.'
@@ -452,32 +450,6 @@ export async function handleDeleteAnnouncement(announcement, team) {
       const text = await res.text();
       throw new Error(text);
     }
-
-    /* -----------------------------
-       Remove from cache
-    ----------------------------- */
-    const key = cacheKeyFor(team);
-    const raw = localStorage.getItem(key);
-    if (raw) {
-      const cached = JSON.parse(raw);
-      const list = cached?.data?.teamData?.announcements;
-      if (Array.isArray(list)) {
-        cached.data.teamData.announcements = list.filter(
-          a => a.id !== rowId
-        );
-        localStorage.setItem(key, JSON.stringify(cached));
-      }
-    }
-
-    /* -----------------------------
-       Remove from UI immediately
-    ----------------------------- */
-    const elem = document.querySelector(
-      `.announcement-item[data-id="${rowId}"]`
-    );
-    if (elem) elem.remove();
-
-    alert('Announcement deleted. Click Refresh Data to see updated content.');
 
   } catch (err) {
     console.error('Delete failed:', err);
@@ -660,34 +632,4 @@ async function uploadFileToDrive(file, folderId) {
   if (!res.ok) throw new Error(data.error?.message || 'File upload failed');
 
   return data.id;
-}
-
-function upsertAnnouncementInCache(team, row) {
-  const key = cacheKeyFor(team);
-  const raw = localStorage.getItem(key);
-  if (!raw) return null;
-
-  try {
-    const cached = JSON.parse(raw);
-    const list = cached?.data?.teamData?.announcements;
-    if (!Array.isArray(list)) return null;
-
-    const announcement = normalizeAnnouncement(row);
-    if (!announcement) return null;
-
-    const index = list.findIndex(a => a.id === announcement.id);
-    if (index >= 0) {
-      list[index] = announcement;
-    } else {
-      list.unshift(announcement);
-    }
-
-    cached.timestamp = Date.now();
-    localStorage.setItem(key, JSON.stringify(cached));
-
-    return announcement;
-  } catch (err) {
-    console.warn('Cache update failed:', err);
-    return null;
-  }
 }
