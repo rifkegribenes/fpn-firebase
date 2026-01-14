@@ -8,8 +8,6 @@ import { config } from './config.js';
 import { showUpdateForm, handleDeleteAnnouncement } from './submit.js';
 import { getNormalizedTeamParam, 
 	setLoading, 
-	isLocalStorageAvailable, 
-	cacheKeyFor, 
 	waitForElement,
 	normalizeAnnouncement,
 	formatDate,
@@ -264,13 +262,6 @@ export async function renderTeamPage(data, user) {
             if (res.ok) {
               console.log('Row deleted:', dataRes);
 
-              // Remove from cache
-              const cached = getCachedData(teamParam);
-              if (cached?.data?.minutes) {
-                cached.data.minutes = cached.data.minutes.filter(f => f.rowId !== file.rowId);
-                cacheData(teamParam, cached.data, cached.data.auth);
-              }
-
               // Remove from DOM
               li.remove();
             } else {
@@ -413,11 +404,6 @@ export async function renderTeamPage(data, user) {
 
 	        if (res.ok) {
 	          console.log('Row deleted:', dataRes);
-	          const cached = getCachedData(teamParam);
-	          if (cached?.data?.teamData?.opsPlanFile?.[0]?.rowId === file.rowId) {
-              cached.data.teamData.opsPlanFile = [];
-              cacheData(teamParam, cached.data, cached.data.auth);
-            }
 	          li.remove();
 	        } else {
 	          console.error('Failed to delete row:', dataRes);
@@ -496,11 +482,6 @@ export function updateAuthUI(user) {
     // Remove minutes trash icons on logout
 		document.querySelectorAll('.trash-icon').forEach(el => el.remove());
 
-    // Update cached auth state only (lastUserEmail), do NOT touch team data
-    if (isLocalStorageAvailable()) {
-      localStorage.setItem('lastUserEmail', '');
-      // Keep `teamData_*` cache intact
-    }
   }
 }
 
@@ -509,163 +490,50 @@ const auth = window.firebaseAuth;
 let prevUser = null; // track previous state
 
 onAuthStateChanged(auth, async (user) => {
-  const email = user?.email || '';
-  console.log('onAuthStateChanged →', email || 'anonymous');
-
   setCurrentUser(user);
   updateAuthUI(user);
 
-  // Detect “just logged out”: previously logged in, now null
-  const justLoggedOut = prevUser && !user;
-
-  // Load backend if:
-  // 1. Initial load (prevUser === null)
-  // 2. User is logged in
-  if (!justLoggedOut) {
-    const team = getNormalizedTeamParam();
-
-    // --- CLEAR CACHE ON LOGIN ---
-    const lastEmail = localStorage.getItem('lastUserEmail');
-    const currentEmail = user?.email || '';
-
-    if (lastEmail && currentEmail && lastEmail !== currentEmail) {
-      console.log(`User changed ${lastEmail} → ${currentEmail}, clearing cache`);
-      localStorage.removeItem(cacheKeyFor(team));
-      localStorage.removeItem(cacheKeyFor('teamlinks'));
-    }
-
-    localStorage.setItem('lastUserEmail', currentEmail);
-
-    console.log('Loading backend for team:', team);
-    await loadBackend(team, user);
-  } else {
-    console.log('User just logged out — skipping backend load.');
-  }
-
-  // Update prevUser for next auth change
-  prevUser = user;
+  const team = getNormalizedTeamParam();
+  await loadBackend(team, user);
 });
 
-// --- Immediately fetch backend for anonymous user ---
-export async function loadBackend(team, user = null, { force = false } = {}) {
-  const email = user?.email || '';
-  // console.log('loadBackend');
-  setLoading(true); // always show spinner initially
 
-  // --- TEAM LINKS PAGE (no ?team param) ---
-  if (!team) {
-    console.log('No team param — rendering team links page');
 
-    const pseudoTeamKey = 'teamlinks';
-    const linksContent = document.getElementById('linksContent');
-    const teamContent = document.getElementById('teamContent');
+export async function loadBackend(team, user = null) {
+  setLoading(true);
 
-    linksContent.style.display = 'block';
-    teamContent.style.display = 'none';
+  try {
+    const authRes = deriveAuthFromEmail(user?.email || '');
 
-    // Cache first
-    const cached = getCachedData(pseudoTeamKey);
-    const links = cached?.data?.teamData?.teamLinks;
-
-    if (Array.isArray(links) && links.length) {
-      console.log(`Rendering ${links.length} cached team links`);
-      renderTeamLinks(links);
-      setLoading(false);
+    // Team links page
+    if (!team) {
+      const teamLinks = await fetchTeamLinks();
+      renderTeamLinks(teamLinks);
       return;
     }
 
-    // Fetch fresh
-    try {
-      const [teamLinks, authRes] = await Promise.all([
-			  fetchTeamLinks(),
-			  deriveAuthFromEmail(user?.email || '')
-			]);
+    // Team page
+    const teamData = await fetchTeamData(team);
 
-			if (Array.isArray(teamLinks) && teamLinks.length) {
-			  const payload = {
-			    teamData: { teamLinks },
-			    auth: authRes || {
-					  email: '',
-					  isAdmin: false,
-					  isTeamLead: false,
-					  teamLeadSlug: null
-					}
-				};
-
-
-			  cacheData(pseudoTeamKey, payload.teamData, payload.auth);
-			  renderTeamLinks(teamLinks);
-			} else {
-			  document.getElementById('teamLinks').innerHTML =
-			    '<p>No teams found.</p>';
-			}
-    } catch (err) {
-      console.error('Error fetching team links:', err);
-      document.getElementById('teamLinks').innerHTML =
-        '<p>Error loading teams.</p>';
-    } finally {
-      setLoading(false);
+    if (!teamData?.success) {
+      throw new Error('Team not found');
     }
 
-    return;
-  }
-
-
-  // --- TEAM PAGE (with ?team param) ---
-  const teamContent = document.getElementById('teamContent');
-  const linksContent = document.getElementById('linksContent');
-
-  linksContent.style.display = 'none';
-  teamContent.style.display = 'block';
-
-  // Check cache
-  const cached = !force && getCachedData(team || 'teamlinks');
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    console.log('Using cached team page data:', cached.data);
-
-    const authRes = deriveAuthFromEmail(user?.email || '');
-
-    const safeData = {
-      teamData: cached.data.teamData,
-      auth: authRes
-    };
-
-    renderTeamPage(safeData, user);
-    setLoading(false);
-    return; // skip backend entirely
-}
-
-
-  // No cache or stale → call backend
-  try {
-    const [teamData, authRes] = await Promise.all([
-	  fetchTeamData(team),
-	  deriveAuthFromEmail(user?.email || '')
-	]);
-
-	if (!teamData) {
-	  throw new Error('Team not found');
-	}
-
-	const payload = {
-	  teamData,
-	  auth: authRes || {
-	    email: '',
-	    isAdmin: false,
-	    isTeamLead: false,
-	    teamLeadSlug: null
-	  }
-	};
-
-	cacheData(team, teamData, payload.auth);
-	renderTeamPage(payload, user);
+    renderTeamPage(
+      {
+        teamData,
+        auth: authRes
+      },
+      user
+    );
 
   } catch (err) {
-    console.error('Error fetching team page:', err);
+    console.error('loadBackend failed:', err);
   } finally {
     setLoading(false);
   }
 }
+
 
 // --- Helper: attach refresh listener once ---
 function attachRefreshListener() {
@@ -761,90 +629,6 @@ export function renderAnnouncements({
   });
 }
 
-const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
-
-/**
- * Caches team data along with optional auth info.
- * @param {string} team - team key
- * @param {object} data - backend response for the team
- * @param {object} [auth] - optional auth info { email, isAdmin, isTeamLead, teamLeadSlug }
- */
-export function cacheData(team, data, auth) {
-  if (!isLocalStorageAvailable()) return; // skip caching if localStorage not available
-  if (team.startsWith('teamdata_')) {
-    console.error('cacheData called with cache key instead of team:', team);
-    return;
-  }
-  const key = cacheKeyFor(team);
-
-  // Wrap the data along with auth info (if provided)
-  const payload = {
-    timestamp: Date.now(),
-    data: {
-      teamData: data,
-      auth: auth || null, // store auth block if passed
-    }
-  };
-
-  // console.log(`cacheData(): writing to ${key} —`, payload);
-
-  try {
-    localStorage.setItem(key, JSON.stringify(payload));
-    console.log(`Cached data for team "${team}" at ${new Date(payload.timestamp).toLocaleTimeString()}`);
-  } catch (err) {
-    console.error('cacheData() failed:', err);
-  }
-}
-
-export function getCachedData(team) {
-  if (!isLocalStorageAvailable()) return null; // skip if localStorage not available
-
-  if (team.startsWith('teamData_')) {
-    console.warn('getCachedData(): received cacheKey instead of team:', team);
-    team = team.replace(/^teamData_/, '');
-  }
-
-  const key = cacheKeyFor(team);
-  // console.log('getCachedData(): checking key', key);
-  // console.log('Available localStorage keys:', Object.keys(localStorage));
-  const raw = localStorage.getItem(key);
-  if (!raw) {
-    console.log(`getCachedData(): no localStorage entry found for "${key}"`);
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(raw);
-
-    // Validate structure
-    if (!parsed || typeof parsed !== 'object') {
-      console.warn(`getCachedData(): malformed cache for "${key}"`);
-      return null;
-    }
-
-    const { timestamp, data } = parsed;
-    if (!timestamp || !data) {
-      console.warn(`getCachedData(): missing timestamp or data for "${key}"`);
-      return null;
-    }
-
-    // Expiry check
-    const age = Date.now() - timestamp;
-    if (age > CACHE_TTL) {
-      // console.log(`getCachedData(): cache expired (${Math.round(age / 1000)}s old) for "${key}"`);
-      localStorage.removeItem(key);
-      return null;
-    }
-
-    // console.log(`getCachedData(): cache hit for "${key}" (${Math.round(age / 1000)}s old)`);
-    return parsed;
-
-  } catch (e) {
-    console.error(`getCachedData(): failed to parse cached data for "${key}"`, e);
-    return null;
-  }
-}
-
 /**
  * Render grid of team link buttons.
  */
@@ -861,51 +645,9 @@ function renderTeamLinks(links) {
   });
 }
 
-/**
- * Manually refresh data from backend.
- */
-async function refreshData() {
-  // console.log('refreshData START ******************************');
-  const refreshBtn = document.getElementById('refreshBtn');
-  const team = getNormalizedTeamParam();
-  if (!team) return;
 
-  // Prevent double refresh
-  if (refreshBtn.dataset.refreshing === 'true') {
-    console.log('Refresh already in progress, skipping...');
-    return;
-  }
-  refreshBtn.dataset.refreshing = 'true';
-  refreshBtn.disabled = true;
-
-  // Save original text
-  const originalText = refreshBtn.textContent;
-
-  console.log('showing refresh text and spinner');
-  // Show loading text + spinner
-  refreshBtn.innerHTML = `Refreshing... `;
-
-  // CLEAR ALL CACHES
-  clearTeamPageCache(team); 
-  localStorage.removeItem(cacheKeyFor(team));
-  // console.log(`Cache cleared for team "${team}"`);
-
-  try {
-    // console.log('calling loadBackend ******************************');
-    await loadBackend(team, getCurrentUser(), { force: true });
-  } catch (err) {
-    console.error('Error refreshing data:', err);
-    alert('Error refreshing data: ' + err.message);
-  } finally {
-    // console.log('refreshData FINALLY ******************************');
-    refreshBtn.disabled = false;
-    refreshBtn.dataset.refreshing = 'false';
-    // Restore original text after DOM updates by init()
-    setTimeout(() => {
-      refreshBtn.textContent = originalText;
-      console.log(`refreshBtn.dataset.refreshing: ${refreshBtn.dataset.refreshing}`);
-    }, 0);
-  }
+function refreshData() {
+  location.reload();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
