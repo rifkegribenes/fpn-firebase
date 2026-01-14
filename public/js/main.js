@@ -500,17 +500,26 @@ onAuthStateChanged(auth, async (user) => {
 export async function loadBackend(team, user = null) {
   setLoading(true);
 
+  const linksContent = document.getElementById('linksContent');
+  const teamContent = document.getElementById('teamContent');
+
   try {
     const authRes = deriveAuthFromEmail(user?.email || '');
 
-    // Team links page
+    // --- TEAM LINKS PAGE ---
     if (!team) {
+      if (linksContent) linksContent.style.display = 'block';
+      if (teamContent) teamContent.style.display = 'none';
+
       const teamLinks = await fetchTeamLinks();
       renderTeamLinks(teamLinks);
       return;
     }
 
-    // Team page
+    // --- TEAM PAGE ---
+    if (linksContent) linksContent.style.display = 'none';
+    if (teamContent) teamContent.style.display = 'block';
+
     const teamData = await fetchTeamData(team);
 
     if (!teamData?.success) {
@@ -531,6 +540,7 @@ export async function loadBackend(team, user = null) {
     setLoading(false);
   }
 }
+
 
 
 // --- Helper: attach refresh listener once ---

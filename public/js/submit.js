@@ -21,6 +21,11 @@ function buildDriveFileName({
 	  fileType,   // 'minutes' | 'ops' | 'banner'
 	  meetingDate // string from input[type="date"] or null
 	}) {
+
+    if (!file) {
+      alert('Please select a file.');
+      return;
+    }
     console.log('buildDriveFileName');
 	  const mtgDate = meetingDate
 	    ? formatDateFileName(meetingDate)
@@ -51,29 +56,23 @@ function formatDateFileName(dateInput) {
 }
 
 function normalizeUpdateType(value) {
-  console.log('normalizeUpdateType');
-  const lower = (value || '').toLowerCase();
-  if (lower.includes('announcement')) return 'announcement';
-  if (lower.includes('minutes')) return 'minutes';
-  if (lower.includes('operations')) return 'ops';
-  if (lower.includes('banner')) return 'banner';
-
-  return value;
+  return value || '';
 }
+
 
 function initUpdateForm(onComplete, teamObj, user) {
   const radios = document.querySelectorAll('input[name="entry.1192593661"]');
   const submitBtn = document.getElementById('form_submit');
-  const updateDiv = document.getElementById('update_question');
   const teamSelect = document.getElementById('entry.538407109');
   const emailInput = document.getElementById('entry.123456789');
 
   const sections = {
-    "Post announcement": document.getElementById("section_post_announcement"),
-    "Upload meeting minutes": document.getElementById("section_meeting_minutes"),
-    "Upload operations plan": document.getElementById("section_operations_plan"),
-    "Add or replace banner image": document.getElementById("section_banner")
+    announcement: document.getElementById("section_post_announcement"),
+    minutes: document.getElementById("section_meeting_minutes"),
+    ops: document.getElementById("section_operations_plan"),
+    banner: document.getElementById("section_banner")
   };
+
 
   // Hide all sections initially
   Object.values(sections).forEach(section => {
@@ -96,22 +95,25 @@ function initUpdateForm(onComplete, teamObj, user) {
   // Radio buttons logic
   radios.forEach(radio => {
     radio.addEventListener('change', () => {
-      Object.entries(sections).forEach(([key, section]) => {
+      const selectedType = normalizeUpdateType(radio.value);
+
+      Object.entries(sections).forEach(([type, section]) => {
         const inputs = section.querySelectorAll('input, textarea, select');
-        if (radio.value === key) {
+
+        if (type === selectedType) {
           section.style.display = 'block';
           submitBtn.style.display = 'block';
           inputs.forEach(input => input.required = true);
         } else {
-          // Keep display: none but do NOT reset file inputs
           section.style.display = 'none';
           inputs.forEach(input => {
-            if (input.type !== 'file') input.required = false;
+            input.required = false;
           });
         }
       });
     });
   });
+
 
 
   // Form submit
@@ -123,8 +125,6 @@ function initUpdateForm(onComplete, teamObj, user) {
 
 async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
     evt.preventDefault();
-
-    const query = getQueryParams();
 
 		const selectedRadio = document.querySelector(
 		  'input[name="entry.1192593661"]:checked'
@@ -481,16 +481,16 @@ function renderUpdateFormHTML() {
     <p>What do you want to update? <span aria-label="Required">*</span></p>
     <div class="radio-group" role="radiogroup" aria-required="true">
       <label>
-        <input type="radio" name="entry.1192593661" value="Post announcement"> Post announcement (or edit existing announcement)
+        <input type="radio" name="entry.1192593661" value="announcement"> Post announcement (or edit existing announcement)
       </label>
       <label>
-        <input type="radio" name="entry.1192593661" value="Upload meeting minutes"> Upload meeting minutes
+        <input type="radio" name="entry.1192593661" value="minutes"> Upload meeting minutes
       </label>
       <label>
-        <input type="radio" name="entry.1192593661" value="Upload operations plan"> Upload operations plan
+        <input type="radio" name="entry.1192593661" value="ops"> Upload operations plan
       </label>
       <label>
-        <input type="radio" name="entry.1192593661" value="Add or replace banner image"> Add or replace a banner image
+        <input type="radio" name="entry.1192593661" value="banner"> Add or replace a banner image
       </label>
     </div>
   </div>
@@ -591,17 +591,13 @@ async function ensureDriveAccessToken() {
 
 
 
-async function uploadFileToDrive(file, folderId) {
-  console.log('uploadFileToDrive called');
-  if (!file) {
-    console.error('No file sent to uploadFileToDrive');
-    return;
-  }
+async function uploadFileToDrive(file, folderId, filename) {
+  if (!file) return;
 
   const accessToken = await ensureDriveAccessToken();
 
   const metadata = {
-    name: file.name,
+    name: filename ?? file.name,
     parents: [folderId]
   };
 
