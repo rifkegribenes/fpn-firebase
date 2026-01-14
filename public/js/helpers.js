@@ -6,11 +6,6 @@ export function getNormalizedTeamParam() {
   return (urlParams.get('team') || '').toLowerCase();
 }
 
-export function cacheKeyFor(team) {
-  // console.log('cacheKeyFor called with:', team);
-  return `teamData_${team.toLowerCase()}`;
-}
-
 export function normalizeAnnouncement(row) {
   const announcement = {
     id: row.id || row.Id,
@@ -32,21 +27,6 @@ export function normalizeAnnouncement(row) {
 export function getQueryParams() {
     return Object.fromEntries(new URLSearchParams(window.location.search));
   }
-
-  /**
- * Check if localStorage is available and writable.
- */
-export function isLocalStorageAvailable() {
-  try {
-    const testKey = '__test__';
-    localStorage.setItem(testKey, '1');
-    localStorage.removeItem(testKey);
-    return true;
-  } catch (e) {
-    console.warn('LocalStorage not available:', e);
-    return false;
-  }
-}
 
 // Global helper
 export function setLoading(loading, message = "Loading...") {

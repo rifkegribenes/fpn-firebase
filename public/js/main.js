@@ -144,7 +144,6 @@ export async function renderTeamPage(data, user) {
 	    trash.addEventListener('click', async () => {
 	      if (!confirm(`Delete banner for "${teamName}"?`)) return;
 
-	      const teamParam = getNormalizedTeamParam();
 	      try {
           const res = await fetch(
             `${WORKER_URL}?sheet=TeamPageUpdateForm&Id=${encodeURIComponent(bannerData.rowId)}`,
@@ -250,7 +249,6 @@ export async function renderTeamPage(data, user) {
         trash.addEventListener('click', async () => {
           if (!confirm(`Delete "${linkText}" from the team data?`)) return;
 
-          const teamParam = getNormalizedTeamParam();
           try {
             // DELETE row from back end
             const res = await fetch(
@@ -393,7 +391,6 @@ export async function renderTeamPage(data, user) {
         }
 	      if (!confirm(`Delete "${linkText}" from the team data?`)) return;
 
-	      const teamParam = getNormalizedTeamParam();
 	      try {
 	        // DELETE row from back end
 	        const res = await fetch(

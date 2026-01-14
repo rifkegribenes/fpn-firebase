@@ -451,6 +451,9 @@ export async function handleDeleteAnnouncement(announcement, team) {
       throw new Error(text);
     }
 
+    alert('Announcement deleted.');
+    location.reload();
+
   } catch (err) {
     console.error('Delete failed:', err);
     alert('Failed to delete announcement: ' + err.message);
