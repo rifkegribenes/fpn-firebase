@@ -5,61 +5,33 @@ const WORKER_URL = 'https://sheet-proxy.rifkegribenes.workers.dev';
 const TEAM_PAGE_SHEET = `${WORKER_URL}?sheet=TeamPageUpdateForm`;
 const TEAM_LOOKUP_URL = `${WORKER_URL}?sheet=TeamLookup`;
 
-const teamPageCache = new Map();
-
 function normalizeTeamKey(teamName) {
   return teamName.trim().toLowerCase();
 }
 
 async function fetchTeamPageRows(teamName) {
-  const key = normalizeTeamKey(teamName);
-
-  console.log(
-    teamPageCache.size
-      ? 'Using in-memory cloudflare cache'
-      : 'Fetching fresh rows from cloudflare'
-  );
-
-  if (teamPageCache.has(key)) {
-    return teamPageCache.get(key);
-  }
-
   const res = await fetch(
     `${WORKER_URL}?sheet=TeamPageUpdateForm&Your%20Team=${encodeURIComponent(teamName)}`
   );
 
+  if (!res.ok) {
+    throw new Error('Failed to fetch team page rows');
+  }
 
-  const rows = await res.json();
-  teamPageCache.set(key, rows);
-  return rows;
+  return res.json();
 }
 
-let teamLookupCache = null;
 
 async function fetchTeamLookupRows() {
-  if (teamLookupCache) return teamLookupCache;
-
   const res = await fetch(`${WORKER_URL}?sheet=TeamLookup`);
 
-  teamLookupCache = await res.json();
-  // console.log('sample row from teamLookupCache', teamLookupCache[0]);
-  return teamLookupCache;
+  if (!res.ok) {
+    throw new Error('Failed to fetch team lookup');
+  }
+
+  return res.json();
 }
 
-export function clearTeamPageCache(teamName) {
-  if (!teamName) return;
-
-  const key = teamName.trim().toLowerCase();
-  teamPageCache.delete(key);
-
-  console.log(`Cleared in-memory teamPageCache for "${key}"`);
-}
-
-
-export function clearTeamLookupCache() {
-  teamLookupCache = null;
-  console.log('Cleared teamLookupCache');
-}
 
 function deriveAnnouncements(rows, teamName) {
   const normalizedTeam = teamName?.trim().toLowerCase();
