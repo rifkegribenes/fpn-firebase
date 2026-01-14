@@ -334,17 +334,15 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
       if (!res.ok) {
         throw new Error(JSON.stringify(json));
       }
+      
+      alert(
+        isAnnouncementEdit
+          ? 'Edit saved successfully.'
+          : 'Update submitted successfully.'
+      );
 
-      alert(isAnnouncementEdit ? 'Edit saved successfully! Click Refresh Data to see updates' : 'Update submitted successfully! Click Refresh Data to see updates');
-
-      // Hide form / restore page
-      onComplete();
-
-      // Always reload from backend (source of truth)
-      const team = getNormalizedTeamParam();
-      localStorage.removeItem(cacheKeyFor(team));
-      console.log('Cache cleared after submit for team:', team);
-      await loadBackend(team, getCurrentUser(), { force: true });
+      // Full reload guarantees fresh backend state
+      location.reload();
 
 
     } catch (err) {
