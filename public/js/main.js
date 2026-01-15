@@ -107,8 +107,8 @@ export async function renderTeamPage(data, user) {
     bannerDiv.innerHTML = `
       <div class="bannerImgCont">
         <img class="bannerImg"
-           src="${bannerData.publicUrl}${bannerData.publicUrl.includes('?') ? '&' : '?'}v=${bannerData.rowId || Date.now()}"
-           alt="${bannerData.alt}">
+             src="${bannerData.publicUrl}"
+             alt="${bannerData.alt}">
       </div>
     `;
 

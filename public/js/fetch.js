@@ -128,7 +128,7 @@ function deriveOpsPlan(rows, teamName) {
       if (!r.Id) return false;
       if (rowTeam !== normalizedTeam) return false;
       if (!fileUrl.trim()) return false;
-      if (!updateType.includes('operations')) return false;
+      if (updateType !== 'ops') return false;
 
       const driveId = getDriveFileId(fileUrl);
       if (!driveId) return false;

@@ -4,8 +4,9 @@ import {
   getQueryParams,
   setLoading
 } from './helpers.js';
-
+import { getCurrentUser, initGoogleDriveAuth, getTokenClient } from './auth.js';
 import { loadBackend } from './main.js';
+import { config } from './config.js';
 
 const WORKER_URL = 'https://sheet-proxy.rifkegribenes.workers.dev';
 
@@ -73,6 +74,35 @@ function initUpdateForm(onComplete, teamObj, user) {
     banner: document.getElementById("section_banner")
   };
 
+  function checkSubmitButtonState() {
+    // Find visible section
+    const visibleSection = Object.values(sections).find(
+      section => section.style.display !== 'none'
+    );
+
+    if (!visibleSection) {
+      submitBtn.disabled = true;
+      return;
+    }
+
+    const requiredFields = visibleSection.querySelectorAll('[required]');
+    const allFilled = Array.from(requiredFields).every(input => {
+      if (input.type === 'file') {
+        return input.files.length > 0;  // files must be selected
+      }
+      return input.value.trim() !== '';
+    });
+
+    submitBtn.disabled = !allFilled;
+  }
+
+  Object.values(sections).forEach(section => {
+    section.querySelectorAll('input, textarea, select').forEach(input => {
+      input.addEventListener('input', checkSubmitButtonState);
+      input.addEventListener('change', checkSubmitButtonState); // for file inputs & selects
+    });
+  });
+
 
   // Hide all sections initially
   Object.values(sections).forEach(section => {
@@ -111,6 +141,8 @@ function initUpdateForm(onComplete, teamObj, user) {
           });
         }
       });
+
+      checkSubmitButtonState();  // <-- update button enabled/disabled
     });
   });
 
@@ -122,6 +154,7 @@ function initUpdateForm(onComplete, teamObj, user) {
 	});
 
 } // close initUpdateForm()
+
 
 async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
     evt.preventDefault();
@@ -143,6 +176,9 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
 
     const isAnnouncementEdit =
       updateType === 'announcement' && !!existingId;
+
+    const isBanner =
+      updateType === 'banner';
 
     const rowId = isAnnouncementEdit
       ? existingId
@@ -212,16 +248,35 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
     }
 
     if (updateType === 'banner') {
-      const file =
-        document.getElementById('entry_banner_upload')?.files[0];
-
-      console.log('banner file input', file);
+      const bannerInput = document.getElementById('entry_banner_upload');
+      let file = bannerInput?.files[0];
 
       if (!file) {
-        console.error('No banner file selected');
         alert('Please select a banner file.');
         return;
       }
+
+      const MAX_FILE_SIZE_MB = 1;
+      const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+      // Step 1: Reject immediately if file too big
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        alert(`File is too large (${(file.size / 1024 / 1024).toFixed(2)} MB). Maximum allowed is ${MAX_FILE_SIZE_MB} MB. Please crop images to 850 x 300px before uploading.`);
+        bannerInput.value = ''; // clear selection
+        return;
+      }
+
+      // Step 2: Resize image
+      const resizedFile = await resizeImage(file);
+
+      // Step 3: Reject again if resize didn't shrink enough
+      if (resizedFile.size > MAX_FILE_SIZE_BYTES) {
+        alert(`File is too large (${(resizedFile.size / 1024 / 1024).toFixed(2)} MB). Maximum allowed is ${MAX_FILE_SIZE_MB} MB. Please crop images to 850 x 300px before uploading.`);
+        bannerInput.value = ''; // clear selection
+        return;
+      }
+
+      file = resizedFile; // use resized file
 
       const filename = buildDriveFileName({
         file,
@@ -229,22 +284,9 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
         fileType: 'banner'
       });
 
-      console.log(`submit.js: 215: banner filename: ${filename}`);
-
-      bannerFileId = await uploadFileToDrive(
-        file,
-        config.BANNER_FOLDER_ID,
-        filename
-      );
-
-      console.log(`submit.js: 223: bannerFileId: ${bannerFileId}`);
+      bannerFileId = await uploadFileToDrive(file, config.BANNER_FOLDER_ID, filename);
+      bannerUrl = bannerFileId ? `https://drive.google.com/open?id=${bannerFileId}` : '';
     }
-
-    bannerUrl = bannerFileId
-      ? `https://drive.google.com/open?id=${bannerFileId}`
-      : '';
-
-    console.log(`submit.js: 230: bannerUrl: ${bannerUrl}`);
 
     const payload = {
       data: [
@@ -336,6 +378,7 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
       alert(
         isAnnouncementEdit
           ? 'Edit saved successfully.'
+          : isBanner ? 'Image uploaded. Banner edits may take up to a minute to render on your page. Please wait a minute and then reload the page to see new images.'
           : 'Update submitted successfully.'
       );
 
@@ -552,7 +595,7 @@ function renderUpdateFormHTML() {
   </section>
 
   <div>
-    <button type="submit" id="form_submit">Submit</button>
+    <button type="submit" id="form_submit" style="display:none;" disabled>Submit</button>
   </div>
 
 </form>
@@ -631,4 +674,24 @@ async function uploadFileToDrive(file, folderId, filename) {
   if (!res.ok) throw new Error(data.error?.message || 'File upload failed');
 
   return data.id;
+}
+
+function resizeImage(file, maxWidth = 850, maxHeight = 300) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(blob => {
+        resolve(new File([blob], file.name, { type: file.type }));
+      }, file.type, 0.8); // quality 80%
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
 }

@@ -1,0 +1,8 @@
+name = "r2-test"
+main = "workers/r2-test.js"
+compatibility_date = "2025-12-30"
+
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "team-banners-test"        # create a separate test bucket
+preview_bucket_name = "team-banners-test"
