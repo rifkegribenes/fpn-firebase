@@ -335,17 +335,18 @@ export async function renderTeamPage(data, user) {
 
 	      const adminNote = document.createElement('span');
 	      adminNote.className = 'adminNote';
-	      adminNote.innerText = `Opens calendar in a new tab. You must be logged in as ${data.auth.email} to edit. Once calendar opens, switch users by clicking avatar at top right.`
+	      adminNote.innerText = `Edit button opens editable calendar in a new tab. You must be logged in as ${data.auth.email} to edit. Once calendar opens, switch users by clicking avatar at top right.`
 
 	      const editIcon = document.createElement('a');
 	      editIcon.href = editUrl;
 	      editIcon.target = '_blank';
 	      editIcon.rel = 'noopener noreferrer';
 	      editIcon.innerHTML =
-	        '<i class="fa fa-edit" style="color: #df683a;" aria-hidden="true"></i>';
+	        '<i class="fa fa-edit edit-calendar" style="color: #df683a;" aria-hidden="true"></i>';
 
-	      adminDiv.appendChild(adminNote);  
+	       
 	      adminDiv.appendChild(editIcon);
+        adminDiv.appendChild(adminNote); 
 	      eventsDiv.appendChild(adminDiv);
 	    }
 	  }

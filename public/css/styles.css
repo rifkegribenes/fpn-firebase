@@ -443,6 +443,10 @@ img.bannerImg {
   display: none;
 }
 
+.edit-calendar {
+  margin-right: 20px;
+}
+
 @media (max-width: 768px) {
   .calendar-desktop {
     display: none;
