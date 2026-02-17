@@ -85,21 +85,50 @@ function initUpdateForm(onComplete, teamObj, user) {
       return;
     }
 
-    const requiredFields = visibleSection.querySelectorAll('[required]');
-    const allFilled = Array.from(requiredFields).every(input => {
-      if (input.type === 'file') {
-        return input.files.length > 0;  // files must be selected
+    const inputs = visibleSection.querySelectorAll('input, textarea, select');
+
+    const allFilled = Array.from(inputs).every(input => {
+
+      // Skip hidden inputs
+      if (input.type === 'hidden') return true;
+
+      // Skip non-required inputs (except file which we handle manually)
+      if (!input.required && input.type !== 'file') return true;
+
+      // Special case: meeting minutes file OR Drive
+      if (input.type === 'file' && input.id === 'entry_meeting_upload') {
+
+        const driveUrl =
+          document.getElementById('entry_meeting_drive_url')?.value;
+
+        const hasFile = input.files.length > 0;
+        const hasDriveSelection = !!driveUrl;
+
+        return hasFile || hasDriveSelection;
       }
+
       return input.value.trim() !== '';
     });
 
     submitBtn.disabled = !allFilled;
-  }
+}
+
 
   Object.values(sections).forEach(section => {
     section.querySelectorAll('input, textarea, select').forEach(input => {
       input.addEventListener('input', checkSubmitButtonState);
       input.addEventListener('change', checkSubmitButtonState); // for file inputs & selects
+
+      if (input.type === 'file' && input.id === 'entry_meeting_upload') {
+        input.addEventListener('change', () => {
+          if (input.files.length > 0) {
+            document.getElementById('entry_meeting_drive_url').value = '';
+            document.getElementById('entry_meeting_drive_file_id').value = '';
+            document.getElementById('minutes_selected_file').innerText = '';
+          }
+        });
+      }
+
     });
   });
 
@@ -133,7 +162,16 @@ function initUpdateForm(onComplete, teamObj, user) {
         if (type === selectedType) {
           section.style.display = 'block';
           submitBtn.style.display = 'block';
-          inputs.forEach(input => input.required = true);
+          inputs.forEach(input => {
+
+            // Special case for meeting minutes file input
+            if (input.id === 'entry_meeting_upload') {
+              input.required = false; // handled manually
+            } else {
+              input.required = true;
+            }
+
+          });
         } else {
           section.style.display = 'none';
           inputs.forEach(input => {
@@ -146,17 +184,45 @@ function initUpdateForm(onComplete, teamObj, user) {
     });
   });
 
+    // -------------------------------
+    // Drive Picker (Meeting Minutes)
+    // -------------------------------
+
+    const pickMinutesBtn =
+      document.getElementById('btn_pick_minutes_drive');
+
+    if (pickMinutesBtn) {
+      pickMinutesBtn.addEventListener('click', async () => {
+        try {
+          await openDrivePicker((file) => {
+
+            document.getElementById('entry_meeting_drive_file_id').value = file.id;
+            document.getElementById('entry_meeting_drive_url').value = file.url;
+
+            document.getElementById('minutes_selected_file').innerText =
+              `Selected: ${file.name}`;
+
+            // Clear manual upload if used
+            document.getElementById('entry_meeting_upload').value = '';
+
+            checkSubmitButtonState(); // re-check form validity
+          });
+        } catch (err) {
+          alert('Drive picker failed: ' + err.message);
+        }
+      });
+    }
 
 
   // Form submit
-  document.getElementById('updateFormForm').addEventListener('submit', (evt) => {
-	    handleFormSubmitasync(evt, teamObj, user, onComplete);
+  document.getElementById('updateFormForm').addEventListener('submit', async (evt) => {
+	    await handleFormSubmitAsync(evt, teamObj, user, onComplete);
 	});
 
 } // close initUpdateForm()
 
 
-async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
+async function handleFormSubmitAsync (evt, teamObj, user, onComplete) {
     evt.preventDefault();
 
 		const selectedRadio = document.querySelector(
@@ -196,33 +262,55 @@ async function handleFormSubmitasync (evt, teamObj, user, onComplete) {
     let bannerUrl = '';
 
     if (updateType === 'minutes') {
+
       const meetingDate =
         document.getElementById('entry_meeting_date')?.value;
 
-      const file =
-        document.getElementById('entry_meeting_upload')?.files[0];
+      const fileInput =
+        document.getElementById('entry_meeting_upload');
 
-      const filename = buildDriveFileName({
-        file,
-        team: teamObj.shortName,
-        fileType: 'minutes',
-        meetingDate
-      });
+      const pickedUrl =
+        document.getElementById('entry_meeting_drive_url')?.value;
 
-      console.log('config.MINUTES_FOLDER_ID', config.MINUTES_FOLDER_ID);
+      const file = fileInput?.files[0];
 
-      minutesFileId = await uploadFileToDrive(
-        file,
-        config.MINUTES_FOLDER_ID,
-        filename
-      );
+      // ---- OPTION 1: uploaded file ----
+      if (file) {
 
-      minutesUrl = minutesFileId
-      ? `https://drive.google.com/open?id=${minutesFileId}`
-      : '';
+        const filename = buildDriveFileName({
+          file,
+          team: teamObj.shortName,
+          fileType: 'minutes',
+          meetingDate
+        });
+
+        minutesFileId = await uploadFileToDrive(
+          file,
+          config.MINUTES_FOLDER_ID,
+          filename
+        );
+
+        minutesUrl = minutesFileId
+          ? `https://drive.google.com/open?id=${minutesFileId}`
+          : '';
+      }
+
+      // ---- OPTION 2: File picked from Drive ----
+      else if (pickedUrl) {
+
+        minutesUrl = pickedUrl;
+
+      }
+
+      // ---- ERROR: Neither provided ----
+      else {
+        alert('Please upload a file or choose one from Google Drive.');
+        return;
+      }
 
       console.log(`minutesUrl: ${minutesUrl}`);
     }
+
 
     if (updateType === 'ops') {
       const file =
@@ -554,17 +642,55 @@ function renderUpdateFormHTML() {
 
   <section id="section_meeting_minutes">
     <h3>Upload meeting minutes</h3>
-    <p class="formSmall">Please upload all files in PDF or docx format, or you can browse to an existing Google doc in your drive.</p>
+    <p class="formSmall">
+      Please upload all files in PDF or docx format, or browse to an existing document in Google Drive.
+    </p>
+
     <div>
       <label for="entry_meeting_date">Date of meeting</label>
-      <input type="date" id="entry_meeting_date" name="entry.358896631" required max="2075-01-01">
+      <input type="date"
+             id="entry_meeting_date"
+             name="entry.358896631"
+             required
+             max="2075-01-01">
     </div>
+
     <div>
-      <label for="entry_meeting_upload">Upload your meeting minutes here (.pdf, .docx or URL to Google Document)</label>
-      <input type="file" id="entry_meeting_upload" name="entry.1637818725" accept=".pdf,.docx" required>
+      <label for="entry_meeting_upload">
+        Upload your meeting minutes here (.pdf, .docx)
+      </label>
+
+      <!-- File Upload -->
+      <input type="file"
+             id="entry_meeting_upload"
+             name="entry.1637818725"
+             accept=".pdf,.docx">
+
       <small>Upload 1 supported file: PDF or document. Max 10 MB.</small>
+
+      <!-- OR Divider -->
+      <div style="margin:12px 0; font-size:0.9em; color:#666;">
+        — OR —
+      </div>
+
+      <!-- Drive Picker Button -->
+      <button type="button"
+              id="btn_pick_minutes_drive"
+              style="padding:6px 12px; cursor:pointer;">
+        Browse Google Drive
+      </button>
+
+      <!-- Hidden fields to store selection -->
+      <input type="hidden" id="entry_meeting_drive_file_id">
+      <input type="hidden" id="entry_meeting_drive_url">
+
+      <!-- Display selected file -->
+      <div id="minutes_selected_file"
+           style="margin-top:8px; font-size:0.9em; color:#444;">
+      </div>
     </div>
   </section>
+
 
   <section id="section_operations_plan">
     <h3>Upload operations plan</h3>
@@ -695,3 +821,50 @@ function resizeImage(file, maxWidth = 850, maxHeight = 300) {
     img.src = URL.createObjectURL(file);
   });
 }
+
+let pickerApiLoaded = false;
+
+function loadPickerApi() {
+  return new Promise((resolve) => {
+    if (pickerApiLoaded) {
+      resolve();
+      return;
+    }
+
+    gapi.load('picker', {
+      callback: () => {
+        pickerApiLoaded = true;
+        resolve();
+      }
+    });
+  });
+}
+
+async function openDrivePicker(onPicked) {
+  const accessToken = await ensureDriveAccessToken();
+  await loadPickerApi();
+
+  const view = new google.picker.DocsView();
+  view.setSelectFolderEnabled(false); // files only
+
+  const picker = new google.picker.PickerBuilder()
+    .addView(view)
+    .setOAuthToken(accessToken)
+    .setDeveloperKey(config.firebase.apiKey)
+    .setCallback((data) => {
+      if (data.action === google.picker.Action.PICKED) {
+        const doc = data.docs[0];
+
+        onPicked({
+          id: doc.id,
+          name: doc.name,
+          url: `https://drive.google.com/open?id=${doc.id}`
+        });
+      }
+    })
+    .build();
+
+  picker.setVisible(true);
+}
+
+
