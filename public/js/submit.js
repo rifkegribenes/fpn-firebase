@@ -95,17 +95,23 @@ function initUpdateForm(onComplete, teamObj, user) {
       // Skip non-required inputs (except file which we handle manually)
       if (!input.required && input.type !== 'file') return true;
 
-      // Special case: meeting minutes file OR Drive
-      if (input.type === 'file' && input.id === 'entry_meeting_upload') {
+      // Special case: meeting minutes or ops file OR Drive
+      if (input.type === 'file' &&
+          (input.id === 'entry_meeting_upload' || input.id === 'entry_operations_plan')) {
 
-        const driveUrl =
-          document.getElementById('entry_meeting_drive_url')?.value;
+        const driveFieldId = input.id === 'entry_meeting_upload'
+          ? 'entry_meeting_drive_url'
+          : 'entry_ops_drive_url';
+
+        const selectedDriveUrl =
+          document.getElementById(driveFieldId)?.value;
 
         const hasFile = input.files.length > 0;
-        const hasDriveSelection = !!driveUrl;
+        const hasDriveSelection = !!selectedDriveUrl;
 
         return hasFile || hasDriveSelection;
       }
+
 
       return input.value.trim() !== '';
     });
@@ -125,9 +131,25 @@ function initUpdateForm(onComplete, teamObj, user) {
             document.getElementById('entry_meeting_drive_url').value = '';
             document.getElementById('entry_meeting_drive_file_id').value = '';
             document.getElementById('minutes_selected_file').innerText = '';
+
+            input.required = true; // re-enable validation for manual file
           }
         });
       }
+
+      if (input.type === 'file' && input.id === 'entry_operations_plan') {
+        input.addEventListener('change', () => {
+          if (input.files.length > 0) {
+            document.getElementById('entry_ops_drive_url').value = '';
+            document.getElementById('entry_ops_drive_file_id').value = '';
+            document.getElementById('ops_selected_file').innerText = '';
+            
+            input.required = true; // re-enable validation for manual file
+          }
+        });
+      }
+
+
 
     });
   });
@@ -212,6 +234,38 @@ function initUpdateForm(onComplete, teamObj, user) {
         }
       });
     }
+
+    // -------------------------------
+    // Drive Picker (Operations Plan)
+    // -------------------------------
+
+    const pickOpsBtn = document.getElementById('btn_pick_ops_drive');
+
+    if (pickOpsBtn) {
+      pickOpsBtn.addEventListener('click', async () => {
+        try {
+          await openDrivePicker((file) => {
+
+            document.getElementById('entry_ops_drive_file_id').value = file.id;
+            document.getElementById('entry_ops_drive_url').value = file.url;
+
+            document.getElementById('ops_selected_file').innerText =
+              `Selected: ${file.name}`;
+
+            // Clear manual upload if used
+            const fileInput = document.getElementById('entry_operations_plan');
+            fileInput.value = '';
+            fileInput.required = false; // <-- ADD THIS LINE
+
+            checkSubmitButtonState(); // re-check form validity
+          });
+        } catch (err) {
+          alert('Drive picker failed: ' + err.message);
+        }
+      });
+    }
+
+
 
 
   // Form submit
@@ -313,27 +367,52 @@ async function handleFormSubmitAsync (evt, teamObj, user, onComplete) {
 
 
     if (updateType === 'ops') {
-      const file =
-        document.getElementById('entry_operations_plan')?.files[0];
 
-      const filename = buildDriveFileName({
-        file,
-        team: teamObj.shortName,
-        fileType: 'ops',
-        meetingDate: null
-      });
+      const fileInput =
+        document.getElementById('entry_operations_plan');
 
-      opsFileId = await uploadFileToDrive(
-        file,
-        config.OPS_FOLDER_ID,
-        filename
-      );
+      const pickedOpsUrl =
+        document.getElementById('entry_ops_drive_url')?.value;
 
-      opsUrl = opsFileId
-      ? `https://drive.google.com/open?id=${opsFileId}`
-      : '';
+      const file = fileInput?.files[0];
 
+      // ---- OPTION 1: uploaded file ----
+      if (file) {
+
+        const filename = buildDriveFileName({
+          file,
+          team: teamObj.shortName,
+          fileType: 'ops',
+          meetingDate: null
+        });
+
+        opsFileId = await uploadFileToDrive(
+          file,
+          config.OPS_FOLDER_ID,
+          filename
+        );
+
+        opsUrl = opsFileId
+          ? `https://drive.google.com/open?id=${opsFileId}`
+          : '';
+
+      }
+
+      // ---- OPTION 2: File picked from Drive ----
+      else if (pickedOpsUrl) {
+
+        opsUrl = pickedOpsUrl;
+
+      }
+
+      // ---- ERROR: Neither provided ----
+      else {
+        alert('Please upload a file or choose one from Google Drive.');
+        return;
+      }
     }
+
+
 
     if (updateType === 'banner') {
       const bannerInput = document.getElementById('entry_banner_upload');
@@ -694,13 +773,41 @@ function renderUpdateFormHTML() {
 
   <section id="section_operations_plan">
     <h3>Upload operations plan</h3>
-    <p class="formSmall">Please upload all files in PDF or doc format.</p>
+    <p class="formSmall">Please upload all files in PDF or doc format, or choose one from Google Drive.</p>
     <div>
-      <label for="entry_operations_plan">Upload your team's operations plan here (.pdf, .docx or URL to Google Document)</label>
-      <input type="file" id="entry_operations_plan" name="entry.1704615082" accept=".pdf,.docx" required>
+      <label for="entry_operations_plan">Upload your team's operations plan (.pdf, .docx)</label>
+
+      <!-- File Upload -->
+      <input type="file"
+             id="entry_operations_plan"
+             name="entry.1704615082"
+             accept=".pdf,.docx">
+
       <small>Upload 1 supported file: PDF or document. Max 10 MB.</small>
+
+      <!-- OR Divider -->
+      <div style="margin:12px 0; font-size:0.9em; color:#666;">
+        — OR —
+      </div>
+
+      <!-- Drive Picker Button -->
+      <button type="button"
+              id="btn_pick_ops_drive"
+              style="padding:6px 12px; cursor:pointer;">
+        Browse Google Drive
+      </button>
+
+      <!-- Hidden fields to store selection -->
+      <input type="hidden" id="entry_ops_drive_file_id">
+      <input type="hidden" id="entry_ops_drive_url">
+
+      <!-- Display selected file -->
+      <div id="ops_selected_file"
+           style="margin-top:8px; font-size:0.9em; color:#444;">
+      </div>
     </div>
   </section>
+
 
   <section id="section_banner">
     <h3>Add or replace banner image</h3>
