@@ -513,6 +513,7 @@ export async function loadBackend(team, user = null) {
       if (teamContent) teamContent.style.display = 'none';
 
       const teamLinks = await fetchTeamLinks();
+      console.log('rendering teamLinks');
       renderTeamLinks(teamLinks);
       return;
     }
@@ -646,8 +647,9 @@ function renderTeamLinks(links) {
   container.innerHTML = '';
 
   links.forEach(link => {
+    // console.log(link);
     const a = document.createElement('a');
-    a.href = `?team=${link.shortName}`;
+    a.href = link.shortName === 'multnomah' ? "https://www.multnomahnet.org/" : `?team=${link.shortName}`;
     a.textContent = link.name;
     a.className = link.active ? 'teamLinkBtn teamLinkActive' : 'teamLinkBtn';
     container.appendChild(a);
