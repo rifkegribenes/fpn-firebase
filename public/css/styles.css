@@ -148,8 +148,6 @@ section.drive {
   border-bottom: 0 !important;
 }
 
-}
-
 /* ===== TYPOGRAPHY ===== */
 h1, h2, h3 {
   font-size: 1.3rem;
@@ -373,7 +371,7 @@ img.bannerImg {
 }
 
 .announcement-item h4 {
-  font-size: 1rem;
+  font-size: 1.2rem;
   margin: 0 0 4px 0;
   color: rgba(7, 55, 99, 1);
 }
@@ -384,10 +382,16 @@ img.bannerImg {
   margin-bottom: 4px;
 }
 
-.announcement-item .body {
-  font-size: 0.9rem;
+.announcement-item .body p {
+  font-size: 0.9rem !important;
   color: #333;
   line-height: 1.4;
+}
+
+.announcement-item .body h5 {
+  font-size: 1.1rem !important;
+  margin: 0 0 4px 0;
+  color: #000;
 }
 
 .announcement-admin.links {

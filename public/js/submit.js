@@ -9,6 +9,7 @@ import { loadBackend } from './main.js';
 import { config } from './config.js';
 
 const WORKER_URL = 'https://sheet-proxy.rifkegribenes.workers.dev';
+let quill = null;
 
 
 function generateRowId() {
@@ -60,6 +61,31 @@ function normalizeUpdateType(value) {
   return value || '';
 }
 
+// async function uploadImage(file, teamShortName, fileType, folderId, userFileName) {
+
+//     const MAX_FILE_SIZE_MB = 1;
+//     const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+//     if (file.size > MAX_FILE_SIZE_BYTES) {
+//         throw new Error("Image too large.");
+//     }
+
+//     file = await resizeImage(file);
+
+//     if (file.size > MAX_FILE_SIZE_BYTES) {
+//         throw new Error("Image too large after resize.");
+//     }
+
+//     const filename = userFileName ? userFileName : buildDriveFileName({
+//         file,
+//         team: teamShortName,
+//         fileType
+//     });
+
+//     const fileId = await uploadFileToDrive(file, folderId, filename);
+
+//     return `https://drive.google.com/uc?export=view&id=${fileId}`;
+// }
 
 function initUpdateForm(onComplete, teamObj, user) {
   const radios = document.querySelectorAll('input[name="entry.1192593661"]');
@@ -74,6 +100,26 @@ function initUpdateForm(onComplete, teamObj, user) {
     banner: document.getElementById("section_banner")
   };
 
+  // initialize Quill, even if not editing announcement
+  const editor = document.getElementById('editor');
+  console.log(`editor: ${editor}`);
+  quill = new Quill(editor, {
+    theme: 'snow',
+    modules: {
+      toolbar: [
+        ['bold', 'italic'],
+        [{ header: 5 }],
+        // ['link', 'image'],
+        ['link']
+      ]
+    }
+  });
+
+  // remove required attribute from tooltip inputs
+  document
+  .querySelectorAll('.ql-tooltip input')
+  .forEach(input => input.removeAttribute('required'));
+
   function checkSubmitButtonState() {
     // Find visible section
     const visibleSection = Object.values(sections).find(
@@ -85,9 +131,21 @@ function initUpdateForm(onComplete, teamObj, user) {
       return;
     }
 
-    const inputs = visibleSection.querySelectorAll('input, textarea, select');
+    // const inputs = visibleSection.querySelectorAll('input, textarea, select');
+    const inputs = Array.from(
+      visibleSection.querySelectorAll('input, textarea, select')
+    ).filter(input => input.name?.startsWith('entry.'));
 
-    const allFilled = Array.from(inputs).every(input => {
+    // Array.from(inputs).forEach(input => {
+    //   console.log({
+    //     id: input.id,
+    //     class: input.className,
+    //     parent: input.parentElement,
+    //     html: input.outerHTML
+    //   });
+    // });
+
+    let allFilled = Array.from(inputs).every(input => {
 
       // Skip hidden inputs
       if (input.type === 'hidden') return true;
@@ -116,8 +174,27 @@ function initUpdateForm(onComplete, teamObj, user) {
       return input.value.trim() !== '';
     });
 
+    // console.log({
+    //   beforeQuill: allFilled,
+    //   visibleSection: visibleSection.id,
+    //   quillLength: quill.getText().trim().length
+    // });
+
+    // Additional validation for Quill
+    if (visibleSection.id === 'section_post_announcement') {
+      allFilled = allFilled &&
+        quill &&
+        quill.getText().trim().length > 0;
+    }
+
     submitBtn.disabled = !allFilled;
-}
+  }
+
+  quill.on('text-change', () => {
+    document.getElementById('entry_announcement_body').value =
+        quill.root.innerHTML;
+    checkSubmitButtonState();
+  });
 
 
   Object.values(sections).forEach(section => {
@@ -270,14 +347,15 @@ function initUpdateForm(onComplete, teamObj, user) {
 
   // Form submit
   document.getElementById('updateFormForm').addEventListener('submit', async (evt) => {
-	    await handleFormSubmitAsync(evt, teamObj, user, onComplete);
+	    await handleFormSubmitAsync(evt, teamObj, user, onComplete, quill);
 	});
 
 } // close initUpdateForm()
 
 
-async function handleFormSubmitAsync (evt, teamObj, user, onComplete) {
+async function handleFormSubmitAsync (evt, teamObj, user, onComplete, quill) {
     evt.preventDefault();
+    let html = "";
 
 		const selectedRadio = document.querySelector(
 		  'input[name="entry.1192593661"]:checked'
@@ -455,6 +533,12 @@ async function handleFormSubmitAsync (evt, teamObj, user, onComplete) {
       bannerUrl = bannerFileId ? `https://drive.google.com/open?id=${bannerFileId}` : '';
     }
 
+    if (updateType === 'announcement') {
+      html = quill.root.innerHTML;
+      console.log('html:');
+      console.log(html);
+    }
+
     const payload = {
       data: [
         {
@@ -467,7 +551,8 @@ async function handleFormSubmitAsync (evt, teamObj, user, onComplete) {
             document.getElementById('entry_announcement_title')?.value || "",
 
           "Announcement Body":
-            document.getElementById('entry_announcement_body')?.value || "",
+            // document.getElementById('entry_announcement_body')?.value || "",
+            html,
 
           "Date of meeting":
             document.getElementById('entry_meeting_date')?.value || "",
@@ -625,14 +710,16 @@ async function handleFormSubmitAsync (evt, teamObj, user, onComplete) {
 		}
 
 		// --- PREFILL ANNOUNCEMENT CONTENT (edit-only) ---
-		if (prefill?.id && normalizeUpdateType(prefill.updateType) === 'announcement') {
-      const titleInput = formMount.querySelector('#entry_announcement_title');
-      const bodyInput = formMount.querySelector('#entry_announcement_body');
-      const idInput = formMount.querySelector('#entry_announcement_id');
+    if (prefill?.id && normalizeUpdateType(prefill.updateType) === 'announcement') {
+        const titleInput = formMount.querySelector('#entry_announcement_title');
+        const idInput = formMount.querySelector('#entry_announcement_id');
 
-      if (titleInput) titleInput.value = prefill.title || '';
-      if (bodyInput) bodyInput.value = prefill.body || '';
-      if (idInput) idInput.value = prefill.id;
+        if (titleInput) titleInput.value = prefill.title || '';
+        if (idInput) idInput.value = prefill.id;
+
+        if (quill) {
+            quill.root.innerHTML = prefill.body || '';
+        }
     }
 
 
@@ -671,9 +758,10 @@ export async function handleDeleteAnnouncement(announcement, team) {
 }
 
 function renderUpdateFormHTML() {
+  console.log('new update form 20260626');
   return `
   <div class="form-wrapper">
-<form id="updateFormForm">
+<form id="updateFormForm" novalidate>
   <section id="section_header">
     <h3>Update team page</h3>
   <!-- Your Team -->
@@ -715,7 +803,9 @@ function renderUpdateFormHTML() {
     </div>
     <div>
       <label for="entry_announcement_body">Announcement Body</label>
-      <textarea id="entry_announcement_body" name="entry.1206794665" required></textarea>
+      <div id="editor"></div>
+      <!-- <textarea id="entry_announcement_body" name="entry.1206794665" required></textarea> -->
+      <input type="hidden" id="entry_announcement_body" name="entry.1206794665" required>
     </div>
   </section>
 
