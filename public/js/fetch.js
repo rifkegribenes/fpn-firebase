@@ -217,11 +217,13 @@ export async function globalLookup(team) {
 export async function fetchTeamLinks() {
   const rows = await fetchTeamLookupRows();
 
-  return rows.map(r => ({
-    name: r.Team,
-    shortName: r['Short name'],
-    active: Boolean(r['Assigned to (name)'])
-  }));
+  return rows
+    .filter(r => r['Short name']?.toLowerCase() !== 'test')
+    .map(r => ({
+      name: r.Team,
+      shortName: r['Short name'],
+      active: Boolean(r['Assigned to (name)'])
+    }));
 }
 
 
