@@ -503,7 +503,7 @@ export async function loadBackend(team, user = null) {
 
   // --- SPECIAL REDIRECT: Woodstock ---
   if (team?.trim().toLowerCase() === 'woodstock') {
-    window.open('https://woodstocknet.org', '_blank', 'noopener,noreferrer');
+    window.location.replace('https://woodstocknet.org');
     return;
   }
   
